@@ -48,8 +48,9 @@ const TicketForm = () => {
 
   useEffect(() => {
     // Charger la liste des équipements pour l'agent
-    getAssets().catch(console.error).then((data) => setAssets(data || []))
-
+    getAssets()
+        .then((data) => setAssets(data || []))
+        .catch(() => setAssets([]))
     if (isEdit) {
       getTicketById(ticketId)
         .then((t) => setForm({

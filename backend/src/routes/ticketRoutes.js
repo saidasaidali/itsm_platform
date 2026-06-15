@@ -15,7 +15,8 @@ const ticketValidation = [
   body('title').notEmpty().withMessage('Titre obligatoire.').trim(),
   body('description').notEmpty().withMessage('Description obligatoire.').trim(),
   body('priority').optional().isIn(['Haute', 'Moyenne', 'Basse']).withMessage('Priorité invalide.'),
-  body('asset_id').optional().isInt().withMessage('ID équipement invalide.'), // ← nouveau
+  body('asset_id').optional({ nullable: true, checkFalsy: true })
+  .isInt().withMessage('ID équipement invalide.'),
 ];
 
 // Stats — avant /:id

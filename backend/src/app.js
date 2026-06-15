@@ -49,7 +49,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, message: 'Erreur interne du serveur.' });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`✅ Serveur ITSM démarré sur http://localhost:${PORT}`);
 });
 
