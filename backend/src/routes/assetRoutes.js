@@ -9,6 +9,9 @@ import {
   assignAsset, heartbeat,
 } from '../controllers/assetController.js';
 
+import { runADScan } from '../services/networkDiscovery/adScan.js';
+import { runSNMPScan } from '../services/networkDiscovery/snmpScan.js';
+
 const router = Router();
 
 const assetValidation = [
@@ -40,4 +43,17 @@ router.delete('/:id',authenticate, authorize('Admin'), deleteAsset);
 // ── Affectation dédiée ──
 router.patch('/:id/assign', authenticate, authorize('Admin'), assignAsset);
 
+
+
+// Déclenchement manuel depuis l'interface (Admin uniquement)
+router.post('/scan/ad', authenticate, authorize('Admin'), async (req, res) => {
+  const result = await runADScan();
+  res.json({ success: true, data: result });
+});
+
+router.post('/scan/snmp', authenticate, authorize('Admin'), async (req, res) => {
+  const { baseIp, start, end } = req.body;
+  const result = await runSNMPScan(baseIp || process.env.SNMP_NETWORK_BASE, start || 1, end || 254);
+  res.json({ success: true, data: result });
+});
 export default router;

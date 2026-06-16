@@ -13,6 +13,9 @@ import notificationRoutes from './routes/notificationRoutes.js';
 import './services/ticketMonitor.js'; 
 import './services/slaMonitor.js';
 import './services/ticketMonitor.js';
+
+import { startNetworkDiscovery } from './services/networkDiscovery/scheduler.js';
+
 dotenv.config();
 
 const app = express();
@@ -52,5 +55,5 @@ app.use((err, req, res, next) => {
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`✅ Serveur ITSM démarré sur http://localhost:${PORT}`);
 });
-
+startNetworkDiscovery(); //demarrer la decouverte reseau automatique
 export default app;
