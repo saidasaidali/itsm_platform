@@ -1,8 +1,8 @@
 # agent/report-asset.ps1
 # À planifier via Tâches Planifiées Windows (toutes les heures)
 
-$backendUrl = "http://192.168.X.X:3000/api/assets/heartbeat"  # ← votre IP serveur
-$apiKey = $env:ASSET_AGENT_KEY  # ← même valeur que .env                         # ← à définir
+$backendUrl = "http://192.168.25.59:3000/api/assets/heartbeat"  
+$apiKey = "dresi_agent_2024_secret" # ← même valeur que .env                         
 
 # Collecter les infos du poste
 $hostname   = $env:COMPUTERNAME

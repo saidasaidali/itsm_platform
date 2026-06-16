@@ -388,6 +388,7 @@ export async function deleteAsset(req, res) {
 }
 
 // ─── POST /api/assets/heartbeat — Agent poste Windows ────────
+// ─── POST /api/assets/heartbeat — Agent poste Windows ────────
 export async function heartbeat(req, res) {
   const apiKey = req.headers['x-api-key'];
   if (!apiKey || apiKey !== process.env.ASSET_AGENT_KEY) {
@@ -404,7 +405,7 @@ export async function heartbeat(req, res) {
   }
 
   try {
-    // Chercher l'asset par numéro de série OU adresse MAC
+    // Chercher l'asset existant par numéro de série OU MAC
     const { rows } = await pool.query(
       `SELECT a.*, u.username AS assigned_to_name
        FROM assets a
@@ -415,8 +416,40 @@ export async function heartbeat(req, res) {
       [serial || null, mac_address || null]
     );
 
+    let asset;
+
     if (!rows[0]) {
-      // Équipement inconnu → notifier les admins
+      // ── Équipement inconnu → création automatique ──────────
+      const assetTag = `AUTO-${hostname || serial?.slice(-6) || Date.now()}`;
+
+      const { rows: created } = await pool.query(
+        `INSERT INTO assets
+           (asset_tag, type, brand, model, status,
+            numero_serie_fabricant, adresse_ip, adresse_mac,
+            location, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+         RETURNING *`,
+        [
+          assetTag,
+          'Ordinateur',           // type par défaut
+          os || 'Inconnu',        // brand temporaire = OS détecté
+          hostname || 'Inconnu',  // model temporaire = hostname
+          'En service',
+          serial || null,
+          ip_address || null,
+          mac_address || null,
+          'Détecté automatiquement',
+        ]
+      );
+      asset = created[0];
+
+      await pool.query(
+        `INSERT INTO asset_history (asset_id, action_type, action)
+         VALUES ($1, 'created', $2)`,
+        [asset.id, `Équipement détecté et créé automatiquement via l'agent (poste "${hostname}", utilisateur "${username}")`]
+      );
+
+      // Notifier les admins qu'un nouvel équipement a été auto-détecté
       const { rows: admins } = await pool.query(
         `SELECT u.id FROM users u
          JOIN roles r ON u.role_id = r.id
@@ -424,30 +457,31 @@ export async function heartbeat(req, res) {
       );
       for (const admin of admins) {
         await pool.query(
-          `INSERT INTO notifications (title, message, user_id)
-           VALUES ($1, $2, $3)`,
+          `INSERT INTO notifications (title, message, user_id, "read", asset_id)
+           VALUES ($1, $2, $3, FALSE, $4)`,
           [
-            '🔍 Équipement inconnu détecté',
-            `Poste "${hostname}" (SN: ${serial}, MAC: ${mac_address}, IP: ${ip_address}) ` +
-            `utilisé par "${username}" n'est pas dans l'inventaire.`,
+            '🆕 Nouvel équipement détecté',
+            `Poste "${hostname}" (SN: ${serial || '—'}) ajouté automatiquement à l'inventaire. ` +
+            `Merci de compléter les informations (marque, modèle, affectation).`,
             admin.id,
+            asset.id,
           ]
         );
       }
-      return res.json({ success: true, status: 'unknown' });
+
+      console.log(`[Heartbeat] Nouvel équipement créé : ${assetTag} (${hostname})`);
+    } else {
+      asset = rows[0];
     }
 
-    const asset = rows[0];
-
-    // Chercher l'utilisateur connecté dans la base
+    // ── Détecter changement d'utilisateur ───────────────────
     const { rows: userRows } = await pool.query(
       `SELECT id, username FROM users WHERE username ILIKE $1 LIMIT 1`,
       [username]
     );
     const detectedUserId = userRows[0]?.id || null;
 
-    // Détecter changement d'utilisateur
-    if (detectedUserId && detectedUserId !== asset.assigned_to) {
+    if (detectedUserId && asset.assigned_to && detectedUserId !== asset.assigned_to) {
       const { rows: admins } = await pool.query(
         `SELECT u.id FROM users u
          JOIN roles r ON u.role_id = r.id
@@ -455,26 +489,26 @@ export async function heartbeat(req, res) {
       );
       for (const admin of admins) {
         await pool.query(
-          `INSERT INTO notifications (title, message, user_id)
-           VALUES ($1, $2, $3)`,
+          `INSERT INTO notifications (title, message, user_id, "read", asset_id)
+           VALUES ($1, $2, $3, FALSE, $4)`,
           [
-            '⚠️ Changement d\'utilisateur détecté',
-            `L'équipement "${asset.asset_tag}" (${asset.brand} ${asset.model}) ` +
-            `était affecté à "${asset.assigned_to_name}" ` +
+            "⚠️ Changement d'utilisateur détecté",
+            `L'équipement "${asset.asset_tag}" était affecté à "${asset.assigned_to_name}" ` +
             `mais est utilisé par "${username}" depuis ${ip_address}.`,
             admin.id,
+            asset.id,
           ]
         );
       }
 
-      // Enregistrer dans l'historique de l'asset
-      await addHistory(
-        asset.id, null, 'modified',
-        `Utilisateur détecté : "${username}" (attendu : "${asset.assigned_to_name}") depuis ${ip_address}`
+      await pool.query(
+        `INSERT INTO asset_history (asset_id, action_type, action)
+         VALUES ($1, 'modified', $2)`,
+        [asset.id, `Utilisateur détecté : "${username}" (attendu : "${asset.assigned_to_name}") depuis ${ip_address}`]
       );
     }
 
-    // Mettre à jour IP et MAC dans l'inventaire
+    // ── Mettre à jour IP / MAC / dernière vue ───────────────
     await pool.query(
       `UPDATE assets SET
          adresse_ip  = $1,
@@ -486,9 +520,9 @@ export async function heartbeat(req, res) {
 
     return res.json({
       success: true,
-      status: 'known',
+      status: rows[0] ? 'known' : 'created',
       asset_tag: asset.asset_tag,
-      assigned_to: asset.assigned_to_name,
+      assigned_to: asset.assigned_to_name || null,
     });
   } catch (err) {
     console.error('[heartbeat]', err.message);
