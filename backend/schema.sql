@@ -196,6 +196,14 @@ INSERT INTO notification_preferences (user_id)
 SELECT id FROM users
 ON CONFLICT (user_id) DO NOTHING;
 
+
+ALTER TABLE notifications
+  ADD COLUMN IF NOT EXISTS ticket_id INTEGER REFERENCES tickets(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS asset_id  INTEGER REFERENCES assets(id)  ON DELETE SET NULL;
+
+ALTER TABLE notifications
+  ADD COLUMN IF NOT EXISTS ticket_id INTEGER REFERENCES tickets(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS asset_id  INTEGER REFERENCES assets(id)  ON DELETE SET NULL;
 -- ─── Données de démo ─────────────────────────────────────────
 -- Mot de passe : Admin@1234 (bcrypt hash — à générer avec votre propre hash)
 -- Exécuter depuis Node.js : await bcrypt.hash('Admin@1234', 12)

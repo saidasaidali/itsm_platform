@@ -1,4 +1,4 @@
-// src/services/notificationService.js
+// frontend/src/services/notificationService.js
 import api from './api.js'
 
 const mapNotif = (n) => ({
@@ -6,6 +6,8 @@ const mapNotif = (n) => ({
   title:     n.title,
   message:   n.message,
   read:      n.read,
+  ticketId:  n.ticket_id || null,   // ← nouveau
+  assetId:   n.asset_id  || null,   // ← nouveau
   createdAt: n.created_at,
 })
 

@@ -19,11 +19,12 @@ export async function getNotifications(req, res) {
 }
 
 // ─── GET /api/notifications/unread-count ─────────────────────
+// ─── GET /api/notifications/unread-count ─────────────────────
 export async function getUnreadCount(req, res) {
   try {
     const { rows } = await pool.query(
       `SELECT COUNT(*) AS count FROM notifications
-       WHERE user_id = $1 AND read = FALSE`,
+       WHERE user_id = $1 AND "read" = FALSE`,
       [req.user.id]
     );
     return res.json({ success: true, count: parseInt(rows[0].count) });
@@ -40,7 +41,7 @@ export async function markRead(req, res) {
     return res.status(400).json({ success: false, message: 'ID invalide.' });
   try {
     const { rows } = await pool.query(
-      `UPDATE notifications SET read = TRUE
+      `UPDATE notifications SET "read" = TRUE
        WHERE id = $1 AND user_id = $2 RETURNING *`,
       [id, req.user.id]
     );
@@ -57,8 +58,8 @@ export async function markRead(req, res) {
 export async function markAllRead(req, res) {
   try {
     await pool.query(
-      `UPDATE notifications SET read = TRUE
-       WHERE user_id = $1 AND read = FALSE`,
+      `UPDATE notifications SET "read" = TRUE
+       WHERE user_id = $1 AND "read" = FALSE`,
       [req.user.id]
     );
     return res.json({ success: true, message: 'Toutes les notifications marquées comme lues.' });

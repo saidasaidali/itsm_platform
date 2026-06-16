@@ -18,7 +18,8 @@ import { createUser, getUserById, updateUser, getRoles } from '../../services/us
 
 const UserForm = () => {
   const navigate = useNavigate()
-  const { id } = useParams() // défini si on est en mode édition (/users/:id/edit)
+  const { userId } = useParams()
+  const id = userId 
   const isEditMode = Boolean(id)
 
   const [roles, setRoles] = useState([])

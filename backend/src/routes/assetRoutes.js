@@ -31,7 +31,7 @@ router.get('/warranty-alerts', authenticate, authorize('Admin','Technicien'), ge
 router.post('/heartbeat', heartbeat);
 
 // ── CRUD ──
-router.get('/',      authenticate, authorize('Admin','Technicien'), getAssets);
+router.get('/',      authenticate , getAssets);
 router.get('/:id',   authenticate, authorize('Admin','Technicien'), getAssetById);
 router.post('/',     authenticate, authorize('Admin','Technicien'), assetValidation, createAsset);
 router.put('/:id',   authenticate, authorize('Admin','Technicien'), assetValidation, updateAsset);
