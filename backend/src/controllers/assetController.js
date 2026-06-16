@@ -405,13 +405,12 @@ export async function heartbeat(req, res) {
   }
 
   try {
-    // Chercher l'asset existant par numéro de série OU MAC
     const { rows } = await pool.query(
       `SELECT a.*, u.username AS assigned_to_name
        FROM assets a
        LEFT JOIN users u ON a.assigned_to = u.id
-       WHERE a.numero_serie_fabricant = $1
-          OR a.adresse_mac            = $2
+       WHERE a.serial_number = $1
+          OR a.adresse_mac   = $2
        LIMIT 1`,
       [serial || null, mac_address || null]
     );
@@ -419,21 +418,20 @@ export async function heartbeat(req, res) {
     let asset;
 
     if (!rows[0]) {
-      // ── Équipement inconnu → création automatique ──────────
       const assetTag = `AUTO-${hostname || serial?.slice(-6) || Date.now()}`;
 
       const { rows: created } = await pool.query(
         `INSERT INTO assets
            (asset_tag, type, brand, model, status,
-            numero_serie_fabricant, adresse_ip, adresse_mac,
-            location, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+            serial_number, adresse_ip, adresse_mac,
+            location, last_seen_at, discovery_method, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), 'heartbeat_agent', NOW())
          RETURNING *`,
         [
           assetTag,
-          'Ordinateur',           // type par défaut
-          os || 'Inconnu',        // brand temporaire = OS détecté
-          hostname || 'Inconnu',  // model temporaire = hostname
+          'Ordinateur',
+          os || 'Inconnu',
+          hostname || 'Inconnu',
           'En service',
           serial || null,
           ip_address || null,
@@ -449,7 +447,6 @@ export async function heartbeat(req, res) {
         [asset.id, `Équipement détecté et créé automatiquement via l'agent (poste "${hostname}", utilisateur "${username}")`]
       );
 
-      // Notifier les admins qu'un nouvel équipement a été auto-détecté
       const { rows: admins } = await pool.query(
         `SELECT u.id FROM users u
          JOIN roles r ON u.role_id = r.id
@@ -474,7 +471,6 @@ export async function heartbeat(req, res) {
       asset = rows[0];
     }
 
-    // ── Détecter changement d'utilisateur ───────────────────
     const { rows: userRows } = await pool.query(
       `SELECT id, username FROM users WHERE username ILIKE $1 LIMIT 1`,
       [username]
@@ -508,12 +504,12 @@ export async function heartbeat(req, res) {
       );
     }
 
-    // ── Mettre à jour IP / MAC / dernière vue ───────────────
     await pool.query(
       `UPDATE assets SET
-         adresse_ip  = $1,
-         adresse_mac = $2,
-         updated_at  = NOW()
+         adresse_ip    = $1,
+         adresse_mac   = $2,
+         last_seen_at  = NOW(),
+         updated_at    = NOW()
        WHERE id = $3`,
       [ip_address || null, mac_address || null, asset.id]
     );
