@@ -15,6 +15,11 @@ import './services/slaMonitor.js';
 import './services/ticketMonitor.js';
 
 import { startNetworkDiscovery } from './services/networkDiscovery/scheduler.js';
+import anomalyRoutes from './routes/anomalyRoutes.js';
+import smartCmdbRoutes from './routes/smartCmdbRoutes.js';
+import autoTicketingRoutes from './routes/autoTicketingRoutes.js';
+import dashboardRoutes from './routes/dashboardRoutes.js';
+
 
 dotenv.config();
 
@@ -38,11 +43,13 @@ app.use('/api/tickets', ticketRoutes);
 app.use('/api/assets', assetRoutes);
 app.use('/api/knowledge', knowledgeRoutes);
 app.use('/api/notifications', notificationRoutes);
-
+app.use('/api/anomalies', anomalyRoutes);
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
-
+app.use('/api/cmdb', smartCmdbRoutes);
+app.use('/api/auto-ticketing', autoTicketingRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route introuvable.' });
 });
@@ -51,6 +58,8 @@ app.use((err, req, res, next) => {
   console.error('[ERREUR GLOBALE]', err);
   res.status(500).json({ success: false, message: 'Erreur interne du serveur.' });
 });
+
+
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`✅ Serveur ITSM démarré sur http://localhost:${PORT}`);

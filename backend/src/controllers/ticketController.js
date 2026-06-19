@@ -2,7 +2,7 @@
 import { validationResult } from 'express-validator';
 import pool from '../db.js';
 import emailService from '../services/emailService.js';
-
+import suggestionEngine from '../services/autoTicketing/suggestionEngine.js';
 // ─── Historique ───────────────────────────────────────────────────────────────
 async function addHistory(ticketId, userId, action, oldValue = null, newValue = null) {
   await pool.query(
@@ -146,8 +146,13 @@ export async function getTicketById(req, res) {
        ORDER BY h.created_at ASC`,
       [id]
     );
-
-    return res.json({ success: true, data: { ...ticket, comments, history } });
+    let suggestions = null;
+    if (!['Résolu', 'Clôturé'].includes(ticket.status)) {
+      suggestions = await suggestionEngine.getSuggestions(
+        ticket.title, ticket.description, ticket.category, ticket.id
+      );
+    }
+    return res.json({ success: true, data: { ...ticket, comments, history, suggestions } });
   } catch (err) {
     console.error('[getTicketById]', err.message);
     return res.status(500).json({ success: false, message: 'Erreur serveur.' });
@@ -221,7 +226,19 @@ export async function createTicket(req, res) {
       if (techId) {
         await emailService.notifyAssigned(ticket, techId, req.user.username);
 }
-    return res.status(201).json({ success: true, message: 'Ticket créé.', data: ticket });
+
+
+    // ── Suggestions automatiques pour le créateur ──────────────
+    const suggestions = await suggestionEngine.getSuggestions(
+      title, description, category, ticket.id
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: 'Ticket créé.',
+      data: ticket,
+      suggestions, // ← le frontend peut les afficher immédiatement
+    });
   } catch (err) {
     console.error('[createTicket]', err.message);
     return res.status(500).json({ success: false, message: 'Erreur serveur.' });
