@@ -7,6 +7,8 @@ import {
 } from '../controllers/userController.js';
 import { authenticate } from '../middlewares/authMiddleware.js';
 import { authorize } from '../middlewares/roleMiddleware.js';
+import { adminResetPassword } from '../controllers/authController.js';
+
 
 const router = Router();
 
@@ -61,5 +63,7 @@ router.post('/', authenticate, authorize('Admin'), createValidation, createUser)
 router.put('/:id', authenticate, authorize('Admin'), updateValidation, updateUser);
 router.patch('/:id/status', authenticate, authorize('Admin'), statusValidation, updateUserStatus);
 router.delete('/:id', authenticate, authorize('Admin'), deleteUser);
+router.patch('/:id/reset-password', authenticate, authorize('Admin'), adminResetPassword);
+
 
 export default router;

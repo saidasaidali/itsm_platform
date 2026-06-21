@@ -1,33 +1,61 @@
 // backend/src/services/emailService.js
 import nodemailer from 'nodemailer';
 import pool from '../db.js';
+import { getSettings } from './settingsService.js';
 
-// ── Transporter avec timeout court ────────────────────────────
-const transporter = nodemailer.createTransport({
-  host:   process.env.SMTP_HOST || 'smtp.gmail.com',
-  port:   parseInt(process.env.SMTP_PORT || '587'),
-  secure: process.env.SMTP_SECURE === 'true',
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-  connectionTimeout: 3000,   // ← 3s max pour se connecter
-  greetingTimeout:   3000,   // ← 3s max pour le greeting
-  socketTimeout:     5000,   // ← 5s max par socket
-});
-
-// ── Flag : SMTP disponible ou non ────────────────────────────
+// ── Transporter dynamique ─────────────────────────────────────
+// Reconstruit à partir des settings (base ou .env via getSettings()) à chaque
+// appel de getTransporter(), pour refléter les changements faits depuis
+// l'interface Paramètres sans redémarrer le serveur.
+let cachedTransporter = null;
+let cachedSignature = null;
 let smtpAvailable = false;
 
-transporter.verify((err) => {
-  if (err) {
-    console.warn('[EmailService] SMTP non disponible — emails désactivés');
-    smtpAvailable = false;
-  } else {
-    console.log('[EmailService] ✅ SMTP prêt');
-    smtpAvailable = true;
+function buildTransporterSignature(s) {
+  return `${s.smtp_host}|${s.smtp_port}|${s.smtp_user}|${s.smtp_pass}|${s.smtp_from}`;
+}
+
+function getTransporter() {
+  const s = getSettings();
+  const signature = buildTransporterSignature(s);
+
+  // Si rien n'a changé depuis la dernière fois, réutilise le transporter existant
+  if (cachedTransporter && cachedSignature === signature) {
+    return cachedTransporter;
   }
-});
+
+  const port = Number(s.smtp_port || 587);
+  const secure = port === 465;
+
+  cachedTransporter = nodemailer.createTransport({
+    host: s.smtp_host || 'smtp.gmail.com',
+    port,
+    secure,
+    auth: { user: s.smtp_user, pass: s.smtp_pass },
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 20000,
+    // Contourne l'interception TLS par antivirus/pare-feu d'entreprise
+    // (Kaspersky, ESET, proxy ministériel, etc.). À retirer en production
+    // si le serveur est sur un réseau sans interception SSL.
+    tls: { rejectUnauthorized: false },
+    logger: true,
+    debug: true,
+  });
+  cachedSignature = signature;
+
+  cachedTransporter.verify((err) => {
+    if (err) {
+      console.error('[EmailService] Erreur SMTP :', err.message);
+      smtpAvailable = false;
+    } else {
+      console.log('[EmailService] SMTP prêt');
+      smtpAvailable = true;
+    }
+  });
+
+  return cachedTransporter;
+}
 
 // ── Template HTML ────────────────────────────────────────────
 function buildHtml(title, body, actionUrl = null, actionLabel = null) {
@@ -47,7 +75,7 @@ function buildHtml(title, body, actionUrl = null, actionLabel = null) {
 </style></head><body>
   <div class="container">
     <div class="header">
-      <h2>🖥️ DRESI — ITSM Platform</h2>
+      <h2>DRESI — ITSM Platform</h2>
       <small>Système de gestion des tickets IT</small>
     </div>
     <div class="body">
@@ -64,15 +92,15 @@ function buildHtml(title, body, actionUrl = null, actionLabel = null) {
 }
 
 // ── Envoi NON BLOQUANT (fire and forget) ─────────────────────
-// N'attend PAS la réponse SMTP → la requête API répond immédiatement
 function sendMail(to, subject, html) {
-  if (!smtpAvailable || !process.env.SMTP_USER) {
-    console.log(`[EmailService] Email ignoré (SMTP non disponible) → ${to}`);
-    return; // Pas d'await → non bloquant
+  const s = getSettings();
+  if (!s.smtp_user) {
+    console.log(`[EmailService] Email ignoré (SMTP non configuré) → ${to}`);
+    return;
   }
-  // Lancement sans await intentionnel
+  const transporter = getTransporter();
   transporter.sendMail({
-    from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    from: s.smtp_from || s.smtp_user,
     to, subject, html,
   }).catch((err) => {
     console.error('[EmailService] Erreur envoi (non bloquant) :', err.message);
@@ -103,27 +131,29 @@ async function getUserPref(userId, prefKey) {
   return rows[0] || null;
 }
 
-const FRONTEND = process.env.FRONTEND_URL || 'http://localhost:3001';
+function getFrontendUrl() {
+  return process.env.FRONTEND_URL || 'http://localhost:3001';
+}
 
 // ── 1. Ticket créé ────────────────────────────────────────────
 export async function notifyTicketCreated(ticket, creatorName) {
-  const url = `${FRONTEND}/#/tickets/${ticket.id}`;
+  const url = `${getFrontendUrl()}/#/tickets/${ticket.id}`;
   const { rows: admins } = await pool.query(
     `SELECT u.id, u.email, u.username, COALESCE(np.email_ticket_created, true) AS pref
      FROM users u
      JOIN roles r ON u.role_id = r.id
      LEFT JOIN notification_preferences np ON np.user_id = u.id
-     WHERE r.name = 'Admin' AND u.is_active = true`
+     WHERE r.name = 'Admin' AND u.status = 'active'`
   );
   for (const admin of admins) {
     await createSystemNotif(
       admin.id,
-      `🎫 Nouveau ticket #${ticket.id}`,
+      `Nouveau ticket #${ticket.id}`,
       `"${ticket.title}" créé par ${creatorName}`,
       ticket.id
     );
     if (admin.pref) {
-      sendMail(  // ← PAS d'await
+      sendMail(
         admin.email,
         `[ITSM] Nouveau ticket #${ticket.id} — ${ticket.title}`,
         buildHtml('Nouveau ticket créé',
@@ -144,14 +174,14 @@ export async function notifyTicketCreated(ticket, creatorName) {
 
 // ── 2. Changement de statut ───────────────────────────────────
 export async function notifyStatusChange(ticket, newStatus, actorName, creatorId) {
-  const url   = `${FRONTEND}/#/tickets/${ticket.id}`;
-  const title = `🔄 Ticket #${ticket.id} — ${newStatus}`;
+  const url   = `${getFrontendUrl()}/#/tickets/${ticket.id}`;
+  const title = `Ticket #${ticket.id} — ${newStatus}`;
   const msg   = `Le statut est passé à "${newStatus}" par ${actorName}`;
   const creator = await getUserPref(creatorId, 'email_status_change');
   if (!creator) return;
   await createSystemNotif(creatorId, title, msg, ticket.id);
   if (creator.email_status_change !== false) {
-    sendMail(  // ← PAS d'await
+    sendMail(
       creator.email,
       `[ITSM] Ticket #${ticket.id} — Statut : ${newStatus}`,
       buildHtml('Mise à jour de votre ticket',
@@ -171,17 +201,17 @@ export async function notifyStatusChange(ticket, newStatus, actorName, creatorId
 
 // ── 3. Ticket assigné ─────────────────────────────────────────
 export async function notifyAssigned(ticket, technicianId, actorName) {
-  const url  = `${FRONTEND}/#/tickets/${ticket.id}`;
+  const url  = `${getFrontendUrl()}/#/tickets/${ticket.id}`;
   const tech = await getUserPref(technicianId, 'email_assigned');
   if (!tech) return;
   await createSystemNotif(
     technicianId,
-    `📋 Ticket #${ticket.id} vous est assigné`,
+    `Ticket #${ticket.id} vous est assigné`,
     `"${ticket.title}" vous a été assigné par ${actorName}`,
     ticket.id
   );
   if (tech.email_assigned !== false) {
-    sendMail(  // ← PAS d'await
+    sendMail(
       tech.email,
       `[ITSM] Ticket #${ticket.id} vous est assigné`,
       buildHtml('Un ticket vous a été assigné',
@@ -200,8 +230,8 @@ export async function notifyAssigned(ticket, technicianId, actorName) {
 
 // ── 4. Commentaire ────────────────────────────────────────────
 export async function notifyComment(ticket, commentAuthorName, isInternal, creatorId, assignedToId) {
-  const url   = `${FRONTEND}/#/tickets/${ticket.id}`;
-  const title = `💬 Nouveau commentaire — Ticket #${ticket.id}`;
+  const url   = `${getFrontendUrl()}/#/tickets/${ticket.id}`;
+  const title = `Nouveau commentaire — Ticket #${ticket.id}`;
   const msg   = `${commentAuthorName} a ajouté un commentaire`;
   const targets = new Set();
   if (!isInternal) targets.add(creatorId);
@@ -211,7 +241,7 @@ export async function notifyComment(ticket, commentAuthorName, isInternal, creat
     if (!user) continue;
     await createSystemNotif(uid, title, msg, ticket.id);
     if (user.email_comment !== false) {
-      sendMail(  // ← PAS d'await
+      sendMail(
         user.email,
         `[ITSM] Ticket #${ticket.id} — Nouveau commentaire`,
         buildHtml('Nouveau commentaire sur votre ticket',
@@ -227,21 +257,21 @@ export async function notifyComment(ticket, commentAuthorName, isInternal, creat
 
 // ── 5. SLA dépassé ────────────────────────────────────────────
 export async function notifySLABreach(ticket) {
-  const url   = `${FRONTEND}/#/tickets/${ticket.id}`;
-  const title = `⏰ SLA dépassé — Ticket #${ticket.id}`;
+  const url   = `${getFrontendUrl()}/#/tickets/${ticket.id}`;
+  const title = `SLA dépassé — Ticket #${ticket.id}`;
   const msg   = `Le ticket "${ticket.title}" a dépassé son délai de résolution`;
   const { rows: admins } = await pool.query(
     `SELECT u.id, u.email, u.username, COALESCE(np.email_sla_breach, true) AS pref
      FROM users u JOIN roles r ON u.role_id = r.id
      LEFT JOIN notification_preferences np ON np.user_id = u.id
-     WHERE r.name = 'Admin' AND u.is_active = true`
+     WHERE r.name = 'Admin' AND u.status = 'active'`
   );
   for (const admin of admins) {
     await createSystemNotif(admin.id, title, msg, ticket.id);
     if (admin.pref) {
-      sendMail(  // ← PAS d'await
+      sendMail(
         admin.email,
-        `[ITSM] ⚠️ SLA dépassé — Ticket #${ticket.id}`,
+        `[ITSM] Alerte — SLA dépassé — Ticket #${ticket.id}`,
         buildHtml('Alerte SLA dépassé',
           `<p>Le ticket suivant a dépassé son délai :</p>
            <table style="width:100%;border-collapse:collapse">
@@ -261,9 +291,9 @@ export async function notifySLABreach(ticket) {
     if (tech) {
       await createSystemNotif(ticket.assigned_to, title, msg, ticket.id);
       if (tech.email_sla_breach !== false) {
-        sendMail(  // ← PAS d'await
+        sendMail(
           tech.email,
-          `[ITSM] ⚠️ SLA dépassé — Ticket #${ticket.id}`,
+          `[ITSM] Alerte — SLA dépassé — Ticket #${ticket.id}`,
           buildHtml('Alerte SLA dépassé',
             `<p>Bonjour <strong>${tech.username}</strong>,</p>
              <p>Le ticket qui vous est assigné a dépassé son délai SLA.</p>`,
@@ -277,17 +307,17 @@ export async function notifySLABreach(ticket) {
 
 // ── 6. Ticket clôturé ─────────────────────────────────────────
 export async function notifyClosed(ticket, creatorId, actorName) {
-  const url     = `${FRONTEND}/#/tickets/${ticket.id}`;
+  const url     = `${getFrontendUrl()}/#/tickets/${ticket.id}`;
   const creator = await getUserPref(creatorId, 'email_closed');
   if (!creator) return;
   await createSystemNotif(
     creatorId,
-    `✅ Ticket #${ticket.id} clôturé`,
+    `Ticket #${ticket.id} clôturé`,
     `Votre ticket a été clôturé par ${actorName}`,
     ticket.id
   );
   if (creator.email_closed !== false) {
-    sendMail(  // ← PAS d'await
+    sendMail(
       creator.email,
       `[ITSM] Ticket #${ticket.id} — Clôturé`,
       buildHtml('Votre ticket a été clôturé',
@@ -301,6 +331,38 @@ export async function notifyClosed(ticket, creatorId, actorName) {
   }
 }
 
+// ── Email de réinitialisation (lien) ──────────────────────────
+export async function sendPasswordResetEmail(email, username, resetUrl) {
+  sendMail(
+    email,
+    '[ITSM] Réinitialisation de votre mot de passe',
+    buildHtml(
+      'Réinitialisation de mot de passe',
+      `<p>Bonjour <strong>${username}</strong>,</p>
+       <p>Une demande de réinitialisation de mot de passe a été effectuée pour votre compte.</p>
+       <p>Ce lien est valable 1 heure. Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</p>`,
+      resetUrl, 'Réinitialiser mon mot de passe'
+    )
+  );
+}
+
+// ── Email avec mot de passe temporaire (reset admin) ───────────
+export async function sendTempPasswordEmail(email, username, tempPassword) {
+  const loginUrl = `${getFrontendUrl()}/#/login`;
+  sendMail(
+    email,
+    '[ITSM] Votre mot de passe a été réinitialisé',
+    buildHtml(
+      'Mot de passe réinitialisé',
+      `<p>Bonjour <strong>${username}</strong>,</p>
+       <p>Votre mot de passe a été réinitialisé par un administrateur.</p>
+       <p>Mot de passe temporaire : <strong style="font-size:16px;letter-spacing:1px">${tempPassword}</strong></p>
+       <p>Nous vous recommandons de le modifier dès votre prochaine connexion depuis votre profil.</p>`,
+      loginUrl, 'Se connecter'
+    )
+  );
+}
+
 export default {
   notifyTicketCreated,
   notifyStatusChange,
@@ -308,4 +370,6 @@ export default {
   notifyComment,
   notifySLABreach,
   notifyClosed,
+  sendPasswordResetEmail,
+  sendTempPasswordEmail,
 };

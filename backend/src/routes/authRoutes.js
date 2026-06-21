@@ -4,6 +4,11 @@ import { body } from 'express-validator';
 import { login, register, me, logout } from '../controllers/authController.js';
 import { authenticate } from '../middlewares/authMiddleware.js';
 import { authorize } from '../middlewares/roleMiddleware.js';
+import {
+  forgotPassword, checkResetToken, resetPassword,
+} from '../controllers/authController.js';
+
+
 
 const router = Router();
 
@@ -46,5 +51,8 @@ router.post('/register', registerValidation, register);
 router.get('/me', authenticate, me);
 
 router.post('/logout', authenticate, logout);
+router.post('/forgot-password',          forgotPassword);
+router.get('/reset-password/:token',     checkResetToken);
+router.post('/reset-password/:token',    resetPassword);
 
 export default router;

@@ -19,7 +19,8 @@ import anomalyRoutes from './routes/anomalyRoutes.js';
 import smartCmdbRoutes from './routes/smartCmdbRoutes.js';
 import autoTicketingRoutes from './routes/autoTicketingRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
-
+import settingsRoutes from './routes/settingsRoutes.js';
+import { loadSettings } from './services/settingsService.js';
 
 dotenv.config();
 
@@ -50,6 +51,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/cmdb', smartCmdbRoutes);
 app.use('/api/auto-ticketing', autoTicketingRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/settings', settingsRoutes);
 app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route introuvable.' });
 });
@@ -59,6 +61,9 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, message: 'Erreur interne du serveur.' });
 });
 
+loadSettings().then(() => {
+  console.log('[Settings] Paramètres système chargés depuis la base.');
+});
 
 
 app.listen(PORT, "0.0.0.0", () => {

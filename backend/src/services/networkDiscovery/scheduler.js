@@ -4,47 +4,73 @@ import { runSNMPScan } from './snmpScan.js';
 import { refreshAllLiveStates } from './digitalTwin.js';
 import { detectPcPrinterRelations } from './relationDetector.js';
 import { runAutoTicketingChecks } from '../autoTicketing/autoTicketEngine.js';
+import { getSettings } from '../settingsService.js';
 
-const AD_SCAN_INTERVAL       = parseInt(process.env.AD_SCAN_INTERVAL_MIN       || '60')  * 60 * 1000;
-const SNMP_SCAN_INTERVAL     = parseInt(process.env.SNMP_SCAN_INTERVAL_MIN     || '120') * 60 * 1000;
-const LIVE_STATE_INTERVAL    = parseInt(process.env.LIVE_STATE_INTERVAL_MIN    || '10')  * 60 * 1000;
-const RELATION_INTERVAL      = parseInt(process.env.RELATION_INTERVAL_MIN      || '360') * 60 * 1000;
-const AUTO_TICKET_INTERVAL   = parseInt(process.env.AUTO_TICKET_INTERVAL_MIN   || '30')  * 60 * 1000;
+// Horodatage de la dernière exécution de chaque tâche, pour calculer si
+// l'intervalle configuré est écoulé. Permet de réagir aux changements faits
+// depuis Paramètres → Système sans redémarrer le serveur.
+const lastRun = {
+  adScan: 0,
+  snmpScan: 0,
+  liveState: 0,
+  relations: 0,
+  autoTicketing: 0,
+};
 
-const SNMP_NETWORK_BASE = process.env.SNMP_NETWORK_BASE || '192.168.25';
-const ENABLE_AD_SCAN       = process.env.ENABLE_AD_SCAN       === 'true';
-const ENABLE_SNMP_SCAN     = process.env.ENABLE_SNMP_SCAN     === 'true';
-const ENABLE_LIVE_STATE    = process.env.ENABLE_LIVE_STATE    === 'true';
-const ENABLE_AUTO_TICKETING = process.env.ENABLE_AUTO_TICKETING === 'true';
+// Vérifie toutes les minutes si une tâche doit s'exécuter, selon les
+// paramètres actuels (rechargés à chaque tick via getSettings()).
+const TICK_INTERVAL_MS = 60 * 1000;
+
+function minutesSince(timestamp) {
+  if (!timestamp) return Infinity;
+  return (Date.now() - timestamp) / 60000;
+}
+
+async function tick() {
+  const s = getSettings();
+
+  if (s.enable_ad_scan && minutesSince(lastRun.adScan) >= s.ad_scan_interval_min) {
+    lastRun.adScan = Date.now();
+    console.log(`[Scheduler] Exécution du scan AD (intervalle ${s.ad_scan_interval_min} min)`);
+    runADScan().catch((err) => console.error('[Scheduler] Erreur scan AD :', err.message));
+  }
+
+  if (s.enable_snmp_scan && minutesSince(lastRun.snmpScan) >= s.snmp_scan_interval_min) {
+    lastRun.snmpScan = Date.now();
+    console.log(`[Scheduler] Exécution du scan SNMP (intervalle ${s.snmp_scan_interval_min} min)`);
+    runSNMPScan(s.snmp_network_base).catch((err) => console.error('[Scheduler] Erreur scan SNMP :', err.message));
+  }
+
+  if (s.enable_live_state && minutesSince(lastRun.liveState) >= s.live_state_interval_min) {
+    lastRun.liveState = Date.now();
+    console.log(`[Scheduler] Rafraîchissement Digital Twin (intervalle ${s.live_state_interval_min} min)`);
+    refreshAllLiveStates().catch((err) => console.error('[Scheduler] Erreur Digital Twin :', err.message));
+  }
+
+  // La détection de relations tourne toujours, indépendamment des flags
+  if (minutesSince(lastRun.relations) >= s.relation_interval_min) {
+    lastRun.relations = Date.now();
+    console.log(`[Scheduler] Détection de relations (intervalle ${s.relation_interval_min} min)`);
+    detectPcPrinterRelations().catch((err) => console.error('[Scheduler] Erreur relations :', err.message));
+  }
+
+  if (s.enable_auto_ticketing && minutesSince(lastRun.autoTicketing) >= s.auto_ticket_interval_min) {
+    lastRun.autoTicketing = Date.now();
+    console.log(`[Scheduler] Vérifications auto-ticketing (intervalle ${s.auto_ticket_interval_min} min)`);
+    runAutoTicketingChecks().catch((err) => console.error('[Scheduler] Erreur auto-ticketing :', err.message));
+  }
+}
 
 export function startNetworkDiscovery() {
-  if (ENABLE_AD_SCAN) {
-    console.log(`[Scheduler] Scan AD activé — toutes les ${AD_SCAN_INTERVAL / 60000} min`);
-    runADScan();
-    setInterval(runADScan, AD_SCAN_INTERVAL);
-  }
+  console.log('[Scheduler] Démarrage de la boucle de supervision (vérification toutes les minutes)');
 
-  if (ENABLE_SNMP_SCAN) {
-    console.log(`[Scheduler] Scan SNMP activé — toutes les ${SNMP_SCAN_INTERVAL / 60000} min`);
-    runSNMPScan(SNMP_NETWORK_BASE);
-    setInterval(() => runSNMPScan(SNMP_NETWORK_BASE), SNMP_SCAN_INTERVAL);
-  }
+  // Premier passage immédiat au démarrage du serveur
+  tick();
 
-  if (ENABLE_LIVE_STATE) {
-    console.log(`[Scheduler] Digital Twin activé — toutes les ${LIVE_STATE_INTERVAL / 60000} min`);
-    refreshAllLiveStates();
-    setInterval(refreshAllLiveStates, LIVE_STATE_INTERVAL);
-  }
-
-  console.log(`[Scheduler] Détection de relations — toutes les ${RELATION_INTERVAL / 60000} min`);
-  detectPcPrinterRelations();
-  setInterval(detectPcPrinterRelations, RELATION_INTERVAL);
-
-  if (ENABLE_AUTO_TICKETING) {
-    console.log(`[Scheduler] Auto-ticketing activé — toutes les ${AUTO_TICKET_INTERVAL / 60000} min`);
-    runAutoTicketingChecks();
-    setInterval(runAutoTicketingChecks, AUTO_TICKET_INTERVAL);
-  }
+  // Puis vérification toutes les minutes : chaque tâche active se déclenche
+  // dès que son intervalle configuré est écoulé, en lisant les paramètres
+  // actuels (base de données ou .env en repli)
+  setInterval(tick, TICK_INTERVAL_MS);
 }
 
 export default { startNetworkDiscovery };
