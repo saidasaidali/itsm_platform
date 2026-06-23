@@ -1,1 +1,0 @@
-import{t as e}from"./api-DdOeK4mF.js";var t=async()=>(await e.get(`/api/notifications`)).data.map(e=>({id:e.id,title:e.title,message:e.message,read:e.read,createdAt:e.created_at})),n=async t=>(await e.put(`/api/notifications/${t}/read`)).data,r=async()=>(await e.put(`/api/notifications/read-all`),t());export{r as n,n as r,t};

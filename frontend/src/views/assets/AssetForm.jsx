@@ -1,39 +1,60 @@
-// src/views/assets/AssetForm.jsx
 import React, { useEffect, useState, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
-  CButton, CCard, CCardBody, CCardHeader, CCol, CForm,
-  CFormInput, CFormSelect, CRow,
-  CToast, CToastBody, CToaster, CToastHeader,
+  CButton,
+  CCard,
+  CCardBody,
+  CCardHeader,
+  CCol,
+  CForm,
+  CFormInput,
+  CFormSelect,
+  CRow,
+  CToast,
+  CToastBody,
+  CToaster,
+  CToastHeader,
 } from '@coreui/react'
 import { createAsset, updateAsset, getAssetById } from '../../services/assetService'
 import { getUsers } from '../../services/userService'
 
-const TYPES = ['Ordinateur portable','Ordinateur fixe','Imprimante','Écran','Téléphone','Switch','Serveur','Autre']
+const TYPES = ['Ordinateur portable', 'Ordinateur fixe', 'Imprimante', 'Écran', 'Téléphone', 'Switch', 'Serveur', 'Autre']
+const STATUSES = ['En service', 'En panne', 'En maintenance', 'Retiré']
 
 const AssetForm = () => {
   const { assetId } = useParams()
   const isEdit = Boolean(assetId)
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const toaster = useRef()
   const [toast, addToast] = useState(0)
   const [saving, setSaving] = useState(false)
   const [users, setUsers] = useState([])
 
   const [form, setForm] = useState({
-    assetTag: '', type: '', brand: '', model: '',
-    status: 'En service', location: '',
-    serialNumber: '', department: '', office: '',
-    purchaseDate: '', warrantyEnd: '',
+    assetTag: '',
+    type: '',
+    brand: '',
+    model: '',
+    status: 'En service',
+    location: '',
+    serialNumber: '',
+    department: '',
+    office: '',
+    purchaseDate: '',
+    warrantyEnd: '',
     assignedToId: '',
   })
 
   const showToast = (message, color = 'danger') => {
     addToast(
       <CToast color={color} autohide delay={4000}>
-        <CToastHeader closeButton><strong className="me-auto">Équipement</strong></CToastHeader>
+        <CToastHeader closeButton>
+          <strong className="me-auto">{t('assets.common.asset')}</strong>
+        </CToastHeader>
         <CToastBody className={color === 'danger' ? 'text-white' : ''}>{message}</CToastBody>
-      </CToast>
+      </CToast>,
     )
   }
 
@@ -41,47 +62,52 @@ const AssetForm = () => {
     getUsers().then(setUsers).catch(console.error)
     if (isEdit) {
       getAssetById(assetId)
-        .then((a) => setForm({
-          assetTag:     a.assetTag,
-          type:         a.type,
-          brand:        a.brand,
-          model:        a.model,
-          status:       a.status,
-          location:     a.location,
-          serialNumber: a.serialNumber,
-          department:   a.department,
-          office:       a.office,
-          purchaseDate: a.purchaseDate,
-          warrantyEnd:  a.warrantyEnd,
-          assignedToId: a.assignedToId || '',
-        }))
-        .catch(() => showToast('Erreur lors du chargement.'))
+        .then((asset) =>
+          setForm({
+            assetTag: asset.assetTag,
+            type: asset.type,
+            brand: asset.brand,
+            model: asset.model,
+            status: asset.status,
+            location: asset.location,
+            serialNumber: asset.serialNumber,
+            department: asset.department,
+            office: asset.office,
+            purchaseDate: asset.purchaseDate,
+            warrantyEnd: asset.warrantyEnd,
+            assignedToId: asset.assignedToId || '',
+          }),
+        )
+        .catch(() => showToast(t('assets.form.load_error')))
     }
-  }, [assetId, isEdit])
+  }, [assetId, isEdit, t])
 
-  const handleChange = (e) => {
-    const { name, value } = e.target
+  const handleChange = (event) => {
+    const { name, value } = event.target
     setForm((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  const handleSubmit = async (event) => {
+    event.preventDefault()
     setSaving(true)
     try {
       if (isEdit) {
         await updateAsset(assetId, form)
-        showToast('Équipement mis à jour.', 'success')
+        showToast(t('assets.form.update_success'), 'success')
       } else {
         await createAsset(form)
-        showToast('Équipement créé.', 'success')
+        showToast(t('assets.form.create_success'), 'success')
       }
       setTimeout(() => navigate('/assets'), 1000)
     } catch (err) {
-      showToast(err.response?.data?.message || 'Erreur lors de l\'enregistrement.')
+      showToast(err.response?.data?.message || t('assets.form.save_error'))
     } finally {
       setSaving(false)
     }
   }
+
+  const translateType = (type) => t(`assets.type.${type}`, { defaultValue: type })
+  const translateStatus = (status) => t(`assets.status.${status}`, { defaultValue: status })
 
   return (
     <CRow>
@@ -89,98 +115,130 @@ const AssetForm = () => {
       <CCol xs={12}>
         <CCard>
           <CCardHeader>
-            <strong>{isEdit ? 'Modifier l\'équipement' : 'Ajouter un équipement'}</strong>
+            <strong>{isEdit ? t('assets.form.edit_title') : t('assets.form.add_title')}</strong>
           </CCardHeader>
           <CCardBody>
             <CForm onSubmit={handleSubmit}>
-
-              {/* ── Identification ── */}
-              <h6 className="text-muted text-uppercase small mb-3 mt-1">Identification</h6>
+              <h6 className="text-muted text-uppercase small mb-3 mt-1">{t('assets.sections.identification')}</h6>
               <CRow className="g-3 mb-4">
                 <CCol md={3}>
-                  <CFormInput label="Tag asset *" name="assetTag"
-                    value={form.assetTag} onChange={handleChange} required />
+                  <CFormInput
+                    label={t('assets.fields.asset_tag_required')}
+                    name="assetTag"
+                    value={form.assetTag}
+                    onChange={handleChange}
+                    required
+                  />
                 </CCol>
                 <CCol md={3}>
-                  <CFormInput label="N° de série" name="serialNumber"
-                    value={form.serialNumber} onChange={handleChange} />
+                  <CFormInput
+                    label={t('assets.fields.serial_number')}
+                    name="serialNumber"
+                    value={form.serialNumber}
+                    onChange={handleChange}
+                  />
                 </CCol>
                 <CCol md={3}>
-                  <CFormSelect label="Type *" name="type"
-                    value={form.type} onChange={handleChange} required>
-                    <option value="">-- Sélectionner --</option>
-                    {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                  <CFormSelect label={t('assets.fields.type_required')} name="type" value={form.type} onChange={handleChange} required>
+                    <option value="">{t('common.select')}</option>
+                    {TYPES.map((type) => (
+                      <option key={type} value={type}>
+                        {translateType(type)}
+                      </option>
+                    ))}
                   </CFormSelect>
                 </CCol>
                 <CCol md={3}>
-                  <CFormSelect label="Statut" name="status"
-                    value={form.status} onChange={handleChange}>
-                    <option value="En service">En service</option>
-                    <option value="En panne">En panne</option>
-                    <option value="En maintenance">En maintenance</option>
-                    <option value="Retiré">Retiré</option>
-                  </CFormSelect>
-                </CCol>
-                <CCol md={4}>
-                  <CFormInput label="Marque *" name="brand"
-                    value={form.brand} onChange={handleChange} required />
-                </CCol>
-                <CCol md={4}>
-                  <CFormInput label="Modèle *" name="model"
-                    value={form.model} onChange={handleChange} required />
-                </CCol>
-                <CCol md={4}>
-                  <CFormInput label="Emplacement" name="location"
-                    value={form.location} onChange={handleChange}
-                    placeholder="Salle 101, Bâtiment A..." />
-                </CCol>
-              </CRow>
-
-              {/* ── Affectation ── */}
-              <h6 className="text-muted text-uppercase small mb-3">Affectation</h6>
-              <CRow className="g-3 mb-4">
-                <CCol md={4}>
-                  <CFormSelect label="Affecté à (utilisateur)" name="assignedToId"
-                    value={form.assignedToId} onChange={handleChange}>
-                    <option value="">-- Non affecté --</option>
-                    {users.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.username} ({u.role_name})
+                  <CFormSelect label={t('assets.fields.status')} name="status" value={form.status} onChange={handleChange}>
+                    {STATUSES.map((status) => (
+                      <option key={status} value={status}>
+                        {translateStatus(status)}
                       </option>
                     ))}
                   </CFormSelect>
                 </CCol>
                 <CCol md={4}>
-                  <CFormInput label="Direction / Service" name="department"
-                    value={form.department} onChange={handleChange}
-                    placeholder="DSI, RH, Finance..." />
+                  <CFormInput label={t('assets.fields.brand_required')} name="brand" value={form.brand} onChange={handleChange} required />
                 </CCol>
                 <CCol md={4}>
-                  <CFormInput label="Bureau" name="office"
-                    value={form.office} onChange={handleChange}
-                    placeholder="Bureau 203..." />
+                  <CFormInput label={t('assets.fields.model_required')} name="model" value={form.model} onChange={handleChange} required />
+                </CCol>
+                <CCol md={4}>
+                  <CFormInput
+                    label={t('assets.fields.location')}
+                    name="location"
+                    value={form.location}
+                    onChange={handleChange}
+                    placeholder={t('assets.form.location_placeholder')}
+                  />
                 </CCol>
               </CRow>
 
-              {/* ── Garantie ── */}
-              <h6 className="text-muted text-uppercase small mb-3">Garantie & Achat</h6>
+              <h6 className="text-muted text-uppercase small mb-3">{t('assets.sections.assignment')}</h6>
+              <CRow className="g-3 mb-4">
+                <CCol md={4}>
+                  <CFormSelect
+                    label={t('assets.fields.assigned_user')}
+                    name="assignedToId"
+                    value={form.assignedToId}
+                    onChange={handleChange}
+                  >
+                    <option value="">{t('assets.common.unassigned')}</option>
+                    {users.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.username} ({user.role_name})
+                      </option>
+                    ))}
+                  </CFormSelect>
+                </CCol>
+                <CCol md={4}>
+                  <CFormInput
+                    label={t('assets.fields.department_service')}
+                    name="department"
+                    value={form.department}
+                    onChange={handleChange}
+                    placeholder={t('assets.form.department_placeholder')}
+                  />
+                </CCol>
+                <CCol md={4}>
+                  <CFormInput
+                    label={t('assets.fields.office')}
+                    name="office"
+                    value={form.office}
+                    onChange={handleChange}
+                    placeholder={t('assets.form.office_placeholder')}
+                  />
+                </CCol>
+              </CRow>
+
+              <h6 className="text-muted text-uppercase small mb-3">{t('assets.sections.warranty_purchase')}</h6>
               <CRow className="g-3 mb-4">
                 <CCol md={6}>
-                  <CFormInput type="date" label="Date d'achat" name="purchaseDate"
-                    value={form.purchaseDate} onChange={handleChange} />
+                  <CFormInput
+                    type="date"
+                    label={t('assets.fields.purchase_date')}
+                    name="purchaseDate"
+                    value={form.purchaseDate}
+                    onChange={handleChange}
+                  />
                 </CCol>
                 <CCol md={6}>
-                  <CFormInput type="date" label="Fin de garantie" name="warrantyEnd"
-                    value={form.warrantyEnd} onChange={handleChange} />
+                  <CFormInput
+                    type="date"
+                    label={t('assets.fields.warranty_end')}
+                    name="warrantyEnd"
+                    value={form.warrantyEnd}
+                    onChange={handleChange}
+                  />
                 </CCol>
               </CRow>
 
               <div className="d-flex gap-2">
                 <CButton type="submit" color="primary" disabled={saving}>
-                  {saving ? 'Enregistrement...' : (isEdit ? 'Mettre à jour' : 'Créer l\'équipement')}
+                  {saving ? t('common.saving') : isEdit ? t('assets.form.update') : t('assets.form.create')}
                 </CButton>
                 <CButton color="secondary" onClick={() => navigate('/assets')}>
-                  Annuler
+                  {t('common.cancel')}
                 </CButton>
               </div>
             </CForm>

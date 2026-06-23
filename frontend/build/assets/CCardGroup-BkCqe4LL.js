@@ -1,1 +1,0 @@
-import{E as e,T as t,d as n,f as r,u as i}from"./index-3s0naQ0h.js";var a=e(t()),o=e(n()),s=(0,a.forwardRef)((e,t)=>{var{children:n,className:o}=e,s=r(e,[`children`,`className`]);return a.createElement(`div`,Object.assign({className:i(`card-group`,o)},s,{ref:t}),n)});s.propTypes={children:o.default.node,className:o.default.string},s.displayName=`CCardGroup`;export{s as t};

@@ -1,7 +1,7 @@
-// src/_nav.jsx
-// Le menu est filtré dynamiquement selon le rôle dans AppSidebarNav
 import React from 'react'
 import CIcon from '@coreui/icons-react'
+import i18n from './i18n'
+
 import {
   cilBell,
   cilDescription,
@@ -9,55 +9,76 @@ import {
   cilSpeedometer,
   cilPeople,
   cilLibrary,
+  cilBan,
+  cilSettings,
 } from '@coreui/icons'
+
 import { CNavItem, CNavTitle } from '@coreui/react'
 
-// roles: tableau des rôles autorisés à voir cet item
-// Si 'roles' est absent → visible par tous les utilisateurs connectés
-const _nav = [
+const getNav = () => [
   {
     component: CNavItem,
-    name: 'Dashboard',
+    name: i18n.t('nav.dashboard'),
     to: '/dashboard',
     icon: <CIcon icon={cilSpeedometer} customClassName="nav-icon" />,
   },
+
   {
     component: CNavTitle,
-    name: 'ITSM',
+    name: i18n.t('nav.itsm'),
   },
+
   {
     component: CNavItem,
-    name: 'Utilisateurs',
+    name: i18n.t('nav.users'),
     to: '/users',
     icon: <CIcon icon={cilPeople} customClassName="nav-icon" />,
-    roles: ['Admin'], // ← Admin uniquement
+    roles: ['Admin'],
   },
+
   {
     component: CNavItem,
-    name: 'Tickets',
+    name: i18n.t('nav.tickets'),
     to: '/tickets',
     icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
-    // Visible par tous (Agent crée, Technicien traite, Admin supervise)
   },
+
   {
     component: CNavItem,
-    name: 'Ressources IT',
+    name: i18n.t('nav.assets'),
     to: '/assets',
     icon: <CIcon icon={cilDescription} customClassName="nav-icon" />,
-    roles: ['Admin', 'Technicien'], // ← Admin + Technicien
+    roles: ['Admin', 'Technicien'],
   },
+
   {
     component: CNavItem,
-    name: 'Base de connaissance',
+    name: i18n.t('nav.knowledge'),
     to: '/knowledge',
     icon: <CIcon icon={cilLibrary} customClassName="nav-icon" />,
   },
+
   {
     component: CNavItem,
-    name: 'Notifications',
+    name: i18n.t('nav.notifications'),
     to: '/notifications',
     icon: <CIcon icon={cilBell} customClassName="nav-icon" />,
   },
+
+  {
+    component: CNavItem,
+    name: i18n.t('nav.anomalies'),
+    to: '/anomalies',
+    icon: <CIcon icon={cilBan} customClassName="nav-icon" />,
+    roles: ['Admin', 'Technicien'],
+  },
+
+  {
+    component: CNavItem,
+    name: i18n.t('nav.settings'),
+    to: '/parametres',
+    icon: <CIcon icon={cilSettings} customClassName="nav-icon" />,
+  },
 ]
 
-export default _nav
+export default getNav

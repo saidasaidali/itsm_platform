@@ -1,5 +1,6 @@
 import pool from '../db.js';
 import { reloadSettings } from '../services/settingsService.js';
+import { t } from '../utils/i18n.js';
 
 const SENSITIVE_KEYS = ['smtp_pass'];
 
@@ -16,7 +17,7 @@ export async function getSystemSettings(req, res) {
     return res.json({ success: true, settings });
   } catch (err) {
     console.error('[getSystemSettings]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -24,7 +25,7 @@ export async function getSystemSettings(req, res) {
 export async function updateSystemSettings(req, res) {
   const updates = req.body;
   if (!updates || typeof updates !== 'object') {
-    return res.status(400).json({ success: false, message: 'Données invalides.' });
+    return res.status(400).json({ success: false, message: t(req, 'invalid_data') });
   }
 
   try {
@@ -54,10 +55,10 @@ export async function updateSystemSettings(req, res) {
     // s'appliquent sans redémarrer le serveur
     await reloadSettings();
 
-    return res.json({ success: true, message: 'Paramètres système mis à jour.' });
+    return res.json({ success: true, message: t(req, 'system_settings_updated') });
   } catch (err) {
     console.error('[updateSystemSettings]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -68,10 +69,13 @@ export async function getPreferences(req, res) {
       `SELECT language, date_format FROM users WHERE id = $1`,
       [req.user.id]
     );
-    return res.json({ success: true, preferences: rows[0] || {} });
+    const prefs = rows[0] || {};
+    // Si la langue n'est pas définie, ne pas retourner de valeur par défaut
+    // pour éviter de forcer un changement de langue côté frontend
+    return res.json({ success: true, preferences: prefs });
   } catch (err) {
     console.error('[getPreferences]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -86,9 +90,9 @@ export async function updatePreferences(req, res) {
        WHERE id = $3`,
       [language, date_format, req.user.id]
     );
-    return res.json({ success: true, message: 'Préférences mises à jour.' });
+    return res.json({ success: true, message: t(req, 'preferences_updated') });
   } catch (err) {
     console.error('[updatePreferences]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }

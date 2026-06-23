@@ -1,203 +1,257 @@
-// src/views/assets/Assets.jsx
 import React, { useEffect, useMemo, useState, useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { AuthContext } from '../../auth/AuthProvider'
 import {
-  CAlert, CBadge, CButton, CCard, CCardBody, CCardHeader,
-  CCol, CFormSelect, CInputGroup, CInputGroupText,
-  CRow, CSpinner, CTable, CTableBody, CTableDataCell,
-  CTableHead, CTableHeaderCell, CTableRow,
+  CAlert,
+  CBadge,
+  CButton,
+  CCard,
+  CCardBody,
+  CCardHeader,
+  CCol,
+  CFormSelect,
+  CInputGroup,
+  CInputGroupText,
+  CRow,
+  CSpinner,
+  CTable,
+  CTableBody,
+  CTableDataCell,
+  CTableHead,
+  CTableHeaderCell,
+  CTableRow,
 } from '@coreui/react'
+import CIcon from '@coreui/icons-react'
+import { cilSearch } from '@coreui/icons'
 import { getAssets, getWarrantyAlerts } from '../../services/assetService'
 import { getReliabilityAlerts } from '../../services/ticketService'
+
 const STATUS_COLORS = {
-  'En service':    'success',
-  'En panne':      'danger',
-  'En maintenance':'warning',
-  'Retiré':        'dark',
+  'En service': 'success',
+  'En panne': 'danger',
+  'En maintenance': 'warning',
+  Retiré: 'dark',
 }
+
+const STATUSES = ['En service', 'En panne', 'En maintenance', 'Retiré']
+const ALL = 'Tous'
 
 const Assets = () => {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { currentUser } = useContext(AuthContext)
   const role = currentUser?.role
 
-  const [assets, setAssets]                   = useState([])
-  const [warrantyAlerts, setWarrantyAlerts]   = useState([])
-  const [loading, setLoading]                 = useState(true)
-  const [query, setQuery]                     = useState('')
-  const [statusFilter, setStatusFilter]       = useState('Tous')
-  const [typeFilter, setTypeFilter]           = useState('Tous')
+  const [assets, setAssets] = useState([])
+  const [warrantyAlerts, setWarrantyAlerts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState(ALL)
+  const [typeFilter, setTypeFilter] = useState(ALL)
   const [reliabilityAlerts, setReliabilityAlerts] = useState([])
+
   useEffect(() => {
-    Promise.all([
-      getAssets(),
-      getWarrantyAlerts(),
-      getReliabilityAlerts(),   
-    ])
-      .then(([a, w, r]) => { setAssets(a); setWarrantyAlerts(w); setReliabilityAlerts(r) })
+    Promise.all([getAssets(), getWarrantyAlerts(), getReliabilityAlerts()])
+      .then(([assetList, warrantyList, reliabilityList]) => {
+        setAssets(assetList)
+        setWarrantyAlerts(warrantyList)
+        setReliabilityAlerts(reliabilityList)
+      })
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [])
 
-  const types = useMemo(() => ['Tous', ...new Set(assets.map((a) => a.type))], [assets])
+  const types = useMemo(() => [ALL, ...new Set(assets.map((asset) => asset.type))], [assets])
 
-  const filtered = useMemo(() => assets.filter((a) => {
-    const q = query.toLowerCase()
-    const matchQuery = [a.assetTag, a.brand, a.model, a.assignedTo, a.location, a.department]
-      .join(' ').toLowerCase().includes(q)
-    const matchStatus = statusFilter === 'Tous' || a.status === statusFilter
-    const matchType   = typeFilter   === 'Tous' || a.type   === typeFilter
-    return matchQuery && matchStatus && matchType
-  }), [assets, query, statusFilter, typeFilter])
+  const filtered = useMemo(
+    () =>
+      assets.filter((asset) => {
+        const q = query.toLowerCase()
+        const matchQuery = [asset.assetTag, asset.brand, asset.model, asset.assignedTo, asset.location, asset.department]
+          .join(' ')
+          .toLowerCase()
+          .includes(q)
+        const matchStatus = statusFilter === ALL || asset.status === statusFilter
+        const matchType = typeFilter === ALL || asset.type === typeFilter
+        return matchQuery && matchStatus && matchType
+      }),
+    [assets, query, statusFilter, typeFilter],
+  )
+
+  const translateStatus = (status) => t(`assets.status.${status}`, { defaultValue: status })
+  const translateType = (type) => (type === ALL ? t('common.all') : t(`assets.type.${type}`, { defaultValue: type }))
 
   return (
     <>
-      {/* ── Alertes garantie ── */}
       {warrantyAlerts.length > 0 && (
         <CAlert color="warning" className="mb-4">
-          ⚠️ <strong>{warrantyAlerts.length} équipement(s)</strong> avec garantie expirant dans
-          les 30 prochains jours :{' '}
-          {warrantyAlerts.map((a) => (
-            <span key={a.id}
+          <strong>{t('assets.alerts.warranty_count', { count: warrantyAlerts.length })}</strong>{' '}
+          {t('assets.alerts.warranty_text')}{' '}
+          {warrantyAlerts.map((asset) => (
+            <span
+              key={asset.id}
               className="badge bg-warning text-dark me-1"
               style={{ cursor: 'pointer' }}
-              onClick={() => navigate(`/assets/${a.id}`)}>
-              {a.assetTag} ({a.daysRemaining}j)
+              onClick={() => navigate(`/assets/${asset.id}`)}
+            >
+              {asset.assetTag} ({t('assets.alerts.days_short', { count: asset.daysRemaining })})
             </span>
           ))}
         </CAlert>
       )}
-      {/* Alerte fiabilité */}
-{reliabilityAlerts.length > 0 && (
-  <CAlert color="danger" className="mb-3">
-    🔧 <strong>{reliabilityAlerts.length} équipement(s)</strong> avec fiabilité critique
-    (3+ pannes en 6 mois) :{' '}
-    {reliabilityAlerts.map((a) => (
-      <span key={a.asset_id}
-        className="badge bg-danger me-1"
-        style={{ cursor: 'pointer' }}
-        onClick={() => navigate(`/assets/${a.asset_id}`)}>
-        {a.asset_tag} ({a.pannes_6mois} pannes)
-      </span>
-    ))}
-  </CAlert>
-)}
-      {/* ── En-tête ── */}
+
+      {reliabilityAlerts.length > 0 && (
+        <CAlert color="danger" className="mb-3">
+          <strong>{t('assets.alerts.reliability_count', { count: reliabilityAlerts.length })}</strong>{' '}
+          {t('assets.alerts.reliability_text')}{' '}
+          {reliabilityAlerts.map((asset) => (
+            <span
+              key={asset.asset_id}
+              className="badge bg-danger me-1"
+              style={{ cursor: 'pointer' }}
+              onClick={() => navigate(`/assets/${asset.asset_id}`)}
+            >
+              {asset.asset_tag} ({t('assets.alerts.failures', { count: asset.pannes_6mois })})
+            </span>
+          ))}
+        </CAlert>
+      )}
+
       <CRow className="mb-3 align-items-center">
         <CCol>
-          <h3 className="mb-0">Inventaire des équipements</h3>
-          <small className="text-muted">{assets.length} équipement(s) au total</small>
+          <h3 className="mb-0">{t('assets.list.title')}</h3>
+          <small className="text-muted">{t('assets.list.total', { count: assets.length })}</small>
         </CCol>
         {role === 'Admin' && (
           <CCol xs="auto">
             <CButton color="primary" onClick={() => navigate('/assets/new')}>
-              + Ajouter un équipement
+              {t('assets.list.add')}
             </CButton>
           </CCol>
         )}
       </CRow>
 
-      {/* ── Filtres ── */}
       <CRow className="mb-3 g-2">
         <CCol md={5}>
           <CInputGroup>
-            <CInputGroupText>🔍</CInputGroupText>
-            <input className="form-control" placeholder="Tag, marque, modèle, affectation..."
-              value={query} onChange={(e) => setQuery(e.target.value)} />
+            <CInputGroupText>
+              <CIcon icon={cilSearch} />
+            </CInputGroupText>
+            <input
+              className="form-control"
+              placeholder={t('assets.list.search_placeholder')}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
           </CInputGroup>
         </CCol>
         <CCol md={3}>
-          <CFormSelect value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-            <option value="Tous">Tous les statuts</option>
-            <option value="En service">En service</option>
-            <option value="En panne">En panne</option>
-            <option value="En maintenance">En maintenance</option>
-            <option value="Retiré">Retiré</option>
+          <CFormSelect value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+            <option value={ALL}>{t('assets.filters.all_statuses')}</option>
+            {STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {translateStatus(status)}
+              </option>
+            ))}
           </CFormSelect>
         </CCol>
         <CCol md={3}>
-          <CFormSelect value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
-            {types.map((t) => <option key={t} value={t}>{t}</option>)}
+          <CFormSelect value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
+            {types.map((type) => (
+              <option key={type} value={type}>
+                {translateType(type)}
+              </option>
+            ))}
           </CFormSelect>
         </CCol>
-        {(query || statusFilter !== 'Tous' || typeFilter !== 'Tous') && (
+        {(query || statusFilter !== ALL || typeFilter !== ALL) && (
           <CCol md="auto">
-            <CButton color="outline-secondary"
-              onClick={() => { setQuery(''); setStatusFilter('Tous'); setTypeFilter('Tous') }}>
-              Réinitialiser
+            <CButton
+              color="outline-secondary"
+              onClick={() => {
+                setQuery('')
+                setStatusFilter(ALL)
+                setTypeFilter(ALL)
+              }}
+            >
+              {t('common.reset')}
             </CButton>
           </CCol>
         )}
       </CRow>
 
-      {/* ── Tableau ── */}
       <CCard>
         <CCardHeader className="d-flex justify-content-between">
-          <strong>Liste des équipements</strong>
-          <span className="text-muted small">{filtered.length} résultat(s)</span>
+          <strong>{t('assets.list.table_title')}</strong>
+          <span className="text-muted small">{t('common.results_count', { count: filtered.length })}</span>
         </CCardHeader>
         <CCardBody className="p-0">
           {loading ? (
-            <div className="text-center p-4"><CSpinner /></div>
+            <div className="text-center p-4">
+              <CSpinner />
+            </div>
           ) : filtered.length === 0 ? (
             <div className="text-center text-muted p-4">
-              {assets.length === 0 ? 'Aucun équipement enregistré.' : 'Aucun résultat.'}
+              {assets.length === 0 ? t('assets.list.empty') : t('assets.list.no_match')}
             </div>
           ) : (
             <CTable hover responsive className="mb-0">
               <CTableHead color="light">
                 <CTableRow>
-                  <CTableHeaderCell>Tag</CTableHeaderCell>
-                  <CTableHeaderCell>Type</CTableHeaderCell>
-                  <CTableHeaderCell>Marque / Modèle</CTableHeaderCell>
-                  <CTableHeaderCell>Statut</CTableHeaderCell>
-                  <CTableHeaderCell>Affecté à</CTableHeaderCell>
-                  <CTableHeaderCell>Direction</CTableHeaderCell>
-                  <CTableHeaderCell>Garantie</CTableHeaderCell>
+                  <CTableHeaderCell>{t('assets.fields.tag')}</CTableHeaderCell>
+                  <CTableHeaderCell>{t('assets.fields.type')}</CTableHeaderCell>
+                  <CTableHeaderCell>{t('assets.fields.brand_model')}</CTableHeaderCell>
+                  <CTableHeaderCell>{t('assets.fields.status')}</CTableHeaderCell>
+                  <CTableHeaderCell>{t('assets.fields.assigned_to')}</CTableHeaderCell>
+                  <CTableHeaderCell>{t('assets.fields.department')}</CTableHeaderCell>
+                  <CTableHeaderCell>{t('assets.fields.warranty')}</CTableHeaderCell>
                   <CTableHeaderCell></CTableHeaderCell>
                 </CTableRow>
               </CTableHead>
               <CTableBody>
-                {filtered.map((a) => {
-                  const daysLeft = a.warrantyEnd
-                    ? Math.ceil((new Date(a.warrantyEnd) - new Date()) / 86400000)
+                {filtered.map((asset) => {
+                  const daysLeft = asset.warrantyEnd
+                    ? Math.ceil((new Date(asset.warrantyEnd) - new Date()) / 86400000)
                     : null
                   return (
-                    <CTableRow key={a.id} style={{ cursor: 'pointer' }}
-                      onClick={() => navigate(`/assets/${a.id}`)}>
+                    <CTableRow key={asset.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/assets/${asset.id}`)}>
                       <CTableDataCell>
-                        <strong>{a.assetTag}</strong>
+                        <strong>{asset.assetTag}</strong>
                       </CTableDataCell>
-                      <CTableDataCell>{a.type}</CTableDataCell>
-                      <CTableDataCell>{a.brand} {a.model}</CTableDataCell>
+                      <CTableDataCell>{translateType(asset.type)}</CTableDataCell>
                       <CTableDataCell>
-                        <CBadge color={STATUS_COLORS[a.status] || 'secondary'}>
-                          {a.status}
+                        {asset.brand} {asset.model}
+                      </CTableDataCell>
+                      <CTableDataCell>
+                        <CBadge color={STATUS_COLORS[asset.status] || 'secondary'}>
+                          {translateStatus(asset.status)}
                         </CBadge>
                       </CTableDataCell>
-                      <CTableDataCell>
-                        {a.assignedTo || <em className="text-muted">—</em>}
-                      </CTableDataCell>
-                      <CTableDataCell>
-                        {a.department || <em className="text-muted">—</em>}
-                      </CTableDataCell>
+                      <CTableDataCell>{asset.assignedTo || <em className="text-muted">-</em>}</CTableDataCell>
+                      <CTableDataCell>{asset.department || <em className="text-muted">-</em>}</CTableDataCell>
                       <CTableDataCell>
                         {daysLeft !== null ? (
-                          <span className={
-                            daysLeft < 0 ? 'text-danger' :
-                            daysLeft <= 30 ? 'text-warning fw-bold' : 'text-muted'
-                          }>
+                          <span
+                            className={
+                              daysLeft < 0
+                                ? 'text-danger'
+                                : daysLeft <= 30
+                                  ? 'text-warning fw-bold'
+                                  : 'text-muted'
+                            }
+                          >
                             {daysLeft < 0
-                              ? `Expirée (${Math.abs(daysLeft)}j)`
-                              : `${daysLeft}j`}
+                              ? t('assets.warranty.expired_days', { count: Math.abs(daysLeft) })
+                              : t('assets.warranty.days', { count: daysLeft })}
                           </span>
-                        ) : '—'}
+                        ) : (
+                          '-'
+                        )}
                       </CTableDataCell>
-                      <CTableDataCell onClick={(e) => e.stopPropagation()}>
-                        <CButton color="outline-primary" size="sm"
-                          onClick={() => navigate(`/assets/${a.id}`)}>
-                          Voir
+                      <CTableDataCell onClick={(event) => event.stopPropagation()}>
+                        <CButton color="outline-primary" size="sm" onClick={() => navigate(`/assets/${asset.id}`)}>
+                          {t('common.view')}
                         </CButton>
                       </CTableDataCell>
                     </CTableRow>

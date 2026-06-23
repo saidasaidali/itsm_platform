@@ -1,5 +1,6 @@
 // src/services/knowledgeService.js
 import api from './api.js'
+import i18n from '../i18n'
 
 const mapArticle = (a) => ({
   id:          a.id,
@@ -8,7 +9,7 @@ const mapArticle = (a) => ({
   content:     a.content,
   category:    a.category,
   keywords:    a.keywords || [],
-  author:      a.author_name || 'Service IT',
+  author:      a.author_name || i18n.t('knowledge_meta.default_author'),
   authorId:    a.author_id || null,
   viewsCount:  a.views_count || 0,
   isPublished: a.is_published !== false,

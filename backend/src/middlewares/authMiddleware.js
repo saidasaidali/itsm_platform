@@ -1,5 +1,6 @@
 // src/middlewares/authMiddleware.js
 import { verifyToken } from '../services/authService.js';
+import { t } from '../utils/i18n.js';
 
 export function authenticate(req, res, next) {
   const authHeader = req.headers['authorization'];
@@ -7,7 +8,7 @@ export function authenticate(req, res, next) {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({
       success: false,
-      message: 'Token d\'authentification manquant.',
+      message: t(req, 'token_missing'),
     });
   }
 
@@ -15,12 +16,12 @@ export function authenticate(req, res, next) {
 
   try {
     const decoded = verifyToken(token);
-    req.user = decoded; // { id, username, role }
+    req.user = decoded;
     next();
   } catch (err) {
     if (err.name === 'TokenExpiredError') {
-      return res.status(401).json({ success: false, message: 'Token expiré. Veuillez vous reconnecter.' });
+      return res.status(401).json({ success: false, message: t(req, 'token_expired') });
     }
-    return res.status(401).json({ success: false, message: 'Token invalide.' });
+    return res.status(401).json({ success: false, message: t(req, 'token_invalid') });
   }
 }

@@ -74,3 +74,15 @@ export const getUserStats = async () => {
     inactive: users.filter((u) => u.status === 'inactive').length,
   }
 }
+
+
+
+export const adminResetPassword = async (id) => {
+  const data = await api.patch(`/api/users/${id}/reset-password`);
+  return data;
+};
+
+export const getActiveTechnicians = async () => {
+  const data = await api.get('/api/users/technicians')
+  return data.data
+}

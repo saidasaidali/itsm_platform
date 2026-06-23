@@ -1,10 +1,9 @@
 // src/layout/DefaultLayout.jsx
-import React, { useContext } from 'react'
-import { AppContent, AppHeader, AppSidebar } from '../components'
-import { AuthContext } from '../auth/AuthProvider'
+import React from 'react'
+import { AppContent, AppFooter, AppHeader, AppSidebar } from '../components'
+import Chatbot from '../components/Chatbot'
 
 const DefaultLayout = () => {
-  const { currentUser } = useContext(AuthContext)
   return (
     <div>
       <AppSidebar />
@@ -13,7 +12,9 @@ const DefaultLayout = () => {
         <div className="body flex-grow-1">
           <AppContent />
         </div>
+        <AppFooter />
       </div>
+      <Chatbot />
     </div>
   )
 }

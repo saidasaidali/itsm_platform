@@ -5,7 +5,7 @@ import { refreshAllLiveStates } from './digitalTwin.js';
 import { detectPcPrinterRelations } from './relationDetector.js';
 import { runAutoTicketingChecks } from '../autoTicketing/autoTicketEngine.js';
 import { getSettings } from '../settingsService.js';
-
+import { runAutoClose } from '../autoTicketing/autoCloseEngine.js';
 // Horodatage de la dernière exécution de chaque tâche, pour calculer si
 // l'intervalle configuré est écoulé. Permet de réagir aux changements faits
 // depuis Paramètres → Système sans redémarrer le serveur.
@@ -15,6 +15,7 @@ const lastRun = {
   liveState: 0,
   relations: 0,
   autoTicketing: 0,
+  autoClose: 0,
 };
 
 // Vérifie toutes les minutes si une tâche doit s'exécuter, selon les
@@ -58,6 +59,14 @@ async function tick() {
     lastRun.autoTicketing = Date.now();
     console.log(`[Scheduler] Vérifications auto-ticketing (intervalle ${s.auto_ticket_interval_min} min)`);
     runAutoTicketingChecks().catch((err) => console.error('[Scheduler] Erreur auto-ticketing :', err.message));
+  }
+  // Auto-clôture des tickets résolus depuis 3 jours — vérification quotidienne
+  const AUTO_CLOSE_INTERVAL_MIN = 24 * 60; // 1440 minutes = 1 jour
+
+  if (minutesSince(lastRun.autoClose) >= AUTO_CLOSE_INTERVAL_MIN) {
+    lastRun.autoClose = Date.now();
+    console.log('[Scheduler] Vérification auto-clôture des tickets résolus');
+    runAutoClose().catch((err) => console.error('[Scheduler] Erreur auto-clôture :', err.message));
   }
 }
 

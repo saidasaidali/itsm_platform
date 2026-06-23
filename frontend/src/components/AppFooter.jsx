@@ -1,20 +1,19 @@
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import { CFooter } from '@coreui/react'
 
 const AppFooter = () => {
+  const { t } = useTranslation()
+  const year = new Date().getFullYear()
+
   return (
     <CFooter className="px-4">
       <div>
-        <a href="https://coreui.io" target="_blank" rel="noopener noreferrer">
-          CoreUI
-        </a>
-        <span className="ms-1">&copy; 2026 creativeLabs.</span>
+        <span className="fw-semibold">{t('footer.platform')}</span>
+        <span className="ms-1">{t('footer.copyright', { year })}</span>
       </div>
-      <div className="ms-auto">
-        <span className="me-1">Powered by</span>
-        <a href="https://coreui.io/react" target="_blank" rel="noopener noreferrer">
-          CoreUI React Admin &amp; Dashboard Template
-        </a>
+      <div className="ms-auto text-muted small">
+        {t('footer.support')}
       </div>
     </CFooter>
   )

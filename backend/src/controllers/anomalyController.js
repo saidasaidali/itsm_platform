@@ -1,5 +1,6 @@
 // backend/src/controllers/anomalyController.js
 import pool from '../db.js';
+import { t } from '../utils/i18n.js';
 
 // GET /api/anomalies — liste avec filtres
 export async function getAnomalies(req, res) {
@@ -26,7 +27,7 @@ export async function getAnomalies(req, res) {
     return res.json({ success: true, data: rows });
   } catch (err) {
     console.error('[getAnomalies]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -39,7 +40,7 @@ export async function getUnknownDevices(req, res) {
     return res.json({ success: true, data: rows });
   } catch (err) {
     console.error('[getUnknownDevices]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -50,7 +51,7 @@ export async function resolveAnomaly(req, res) {
   const userId = req.user.id;
 
   if (!['acknowledged', 'resolved', 'ignored'].includes(status)) {
-    return res.status(400).json({ success: false, message: 'Statut invalide.' });
+    return res.status(400).json({ success: false, message: t(req, 'invalid_status') });
   }
 
   try {
@@ -63,11 +64,11 @@ export async function resolveAnomaly(req, res) {
        RETURNING *`,
       [status, userId, id]
     );
-    if (!rows[0]) return res.status(404).json({ success: false, message: 'Anomalie introuvable.' });
+    if (!rows[0]) return res.status(404).json({ success: false, message: t(req, 'anomaly_not_found') });
     return res.json({ success: true, data: rows[0] });
   } catch (err) {
     console.error('[resolveAnomaly]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -85,6 +86,6 @@ export async function getAnomalyStats(req, res) {
     return res.json({ success: true, data: rows[0] });
   } catch (err) {
     console.error('[getAnomalyStats]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }

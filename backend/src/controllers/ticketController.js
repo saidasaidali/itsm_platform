@@ -3,6 +3,8 @@ import { validationResult } from 'express-validator';
 import pool from '../db.js';
 import emailService from '../services/emailService.js';
 import suggestionEngine from '../services/autoTicketing/suggestionEngine.js';
+import { t } from '../utils/i18n.js';
+
 // ─── Historique ───────────────────────────────────────────────────────────────
 async function addHistory(ticketId, userId, action, oldValue = null, newValue = null) {
   await pool.query(
@@ -53,7 +55,7 @@ export async function getTicketStats(req, res) {
     return res.json({ success: true, data: rows[0] });
   } catch (err) {
     console.error('[getTicketStats]', err);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -91,7 +93,7 @@ export async function getTickets(req, res) {
     return res.json({ success: true, data: rows });
   } catch (err) {
     console.error('[getTickets]', err);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -100,7 +102,7 @@ export async function getTicketById(req, res) {
   const { id } = req.params;
   const { role, id: userId } = req.user;
   if (isNaN(id))
-    return res.status(400).json({ success: false, message: 'ID invalide.' });
+    return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
 
   try {
     const { rows } = await pool.query(
@@ -119,13 +121,34 @@ export async function getTicketById(req, res) {
       [id]
     );
     if (!rows[0])
-      return res.status(404).json({ success: false, message: 'Ticket introuvable.' });
+      return res.status(404).json({ success: false, message: t(req, 'ticket_not_found') });
     const ticket = rows[0];
 
     if (role === 'Agent' && ticket.created_by !== userId)
-      return res.status(403).json({ success: false, message: 'Accès refusé.' });
+      return res.status(403).json({ success: false, message: t(req, 'access_denied') });
     if (role === 'Technicien' && ticket.assigned_to !== userId)
-      return res.status(403).json({ success: false, message: 'Accès refusé.' });
+      return res.status(403).json({ success: false, message: t(req, 'access_denied') });
+
+    // ── Transition automatique Assigné → En cours ──────────────
+    // Dès que le technicien assigné ouvre le ticket, il passe en cours
+    // automatiquement — plus besoin de cliquer "Prendre en charge"
+    if (
+      role === 'Technicien' &&
+      ticket.assigned_to === userId &&
+      ticket.status === 'Assigné'
+    ) {
+      await pool.query(
+        `UPDATE tickets SET status = 'En cours', updated_at = NOW() WHERE id = $1`,
+        [id]
+      );
+      await addHistory(id, userId, 'status_change', 'Assigné', 'En cours');
+      await emailService.notifyStatusChange(
+        ticket, 'En cours',
+        ticket.assigned_to_name || 'Technicien',
+        ticket.created_by, userId
+      );
+      ticket.status = 'En cours';
+    }
 
     let commentQuery = `
       SELECT c.*, u.username AS author_name
@@ -146,19 +169,23 @@ export async function getTicketById(req, res) {
        ORDER BY h.created_at ASC`,
       [id]
     );
+
     let suggestions = null;
     if (!['Résolu', 'Clôturé'].includes(ticket.status)) {
       suggestions = await suggestionEngine.getSuggestions(
         ticket.title, ticket.description, ticket.category, ticket.id
       );
     }
-    return res.json({ success: true, data: { ...ticket, comments, history, suggestions } });
+
+    return res.json({
+      success: true,
+      data: { ...ticket, comments, history, suggestions }
+    });
   } catch (err) {
     console.error('[getTicketById]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
-
 // ─── POST /api/tickets — Agent seulement ──────────────────────────────────────
 export async function createTicket(req, res) {
   const errors = validationResult(req);
@@ -167,7 +194,7 @@ export async function createTicket(req, res) {
 
   const { role, id: userId } = req.user;
   if (role !== 'Agent')
-    return res.status(403).json({ success: false, message: 'Seul un agent peut créer un ticket.' });
+    return res.status(403).json({ success: false, message: t(req, 'only_agent_create_ticket') });
 
   const { title, description, priority, category, asset_id } = req.body;
 
@@ -177,13 +204,12 @@ export async function createTicket(req, res) {
   else                           dueDate.setHours(dueDate.getHours() + 24);
 
   try {
-    // Vérifier que l'asset existe si fourni
     if (asset_id) {
       const { rows: assetCheck } = await pool.query(
         'SELECT id, asset_tag FROM assets WHERE id = $1', [asset_id]
       );
       if (!assetCheck[0])
-        return res.status(400).json({ success: false, message: 'Équipement introuvable.' });
+        return res.status(400).json({ success: false, message: t(req, 'asset_not_found') });
     }
 
     const { rows } = await pool.query(
@@ -203,7 +229,6 @@ export async function createTicket(req, res) {
     await addHistory(ticket.id, userId, 'created', null, 'Nouveau');
 
     if (asset_id) {
-      // Enregistrer dans l'historique de l'asset aussi
       await pool.query(
         `INSERT INTO asset_history (asset_id, user_id, action_type, action)
          VALUES ($1, $2, 'ticket_created', $3)`,
@@ -222,26 +247,27 @@ export async function createTicket(req, res) {
       ticket.assigned_to = techId;
       ticket.status = 'Assigné';
     }
-    await emailService.notifyTicketCreated(ticket, req.user.username);
-      if (techId) {
-        await emailService.notifyAssigned(ticket, techId, req.user.username);
-}
 
+    // Notifications — userId passé comme actorId pour exclure le créateur
+    // des destinataires (un agent ne reçoit pas la notif de son propre ticket)
+    await emailService.notifyTicketCreated(ticket, req.user.username, userId);
+    if (techId) {
+      await emailService.notifyAssigned(ticket, techId, req.user.username, userId);
+    }
 
-    // ── Suggestions automatiques pour le créateur ──────────────
     const suggestions = await suggestionEngine.getSuggestions(
       title, description, category, ticket.id
     );
 
     return res.status(201).json({
       success: true,
-      message: 'Ticket créé.',
+      message: t(req, 'ticket_created'),
       data: ticket,
-      suggestions, // ← le frontend peut les afficher immédiatement
+      suggestions,
     });
   } catch (err) {
     console.error('[createTicket]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -250,25 +276,25 @@ export async function updateStatus(req, res) {
   const { id } = req.params;
   const { status: newStatus } = req.body;
   const { role, id: userId } = req.user;
-  if (isNaN(id)) return res.status(400).json({ success: false, message: 'ID invalide.' });
+  if (isNaN(id)) return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
 
   try {
     const { rows } = await pool.query('SELECT * FROM tickets WHERE id = $1', [id]);
-    if (!rows[0]) return res.status(404).json({ success: false, message: 'Ticket introuvable.' });
+    if (!rows[0]) return res.status(404).json({ success: false, message: t(req, 'ticket_not_found') });
     const ticket = rows[0];
 
     const allowed = ALLOWED_TRANSITIONS[ticket.status] || [];
     if (!allowed.includes(newStatus))
       return res.status(400).json({
         success: false,
-        message: `Transition invalide : ${ticket.status} → ${newStatus}`,
+        message: t(req, 'invalid_transition', { from: ticket.status, to: newStatus }),
         allowed,
       });
 
     if (role === 'Agent')
-      return res.status(403).json({ success: false, message: 'Un agent ne peut pas changer le statut.' });
+      return res.status(403).json({ success: false, message: t(req, 'agent_cannot_change_status') });
     if (role === 'Technicien' && ticket.assigned_to !== userId)
-      return res.status(403).json({ success: false, message: 'Vous n\'êtes pas assigné à ce ticket.' });
+      return res.status(403).json({ success: false, message: t(req, 'not_assigned_to_ticket') });
 
     await pool.query(
       `UPDATE tickets
@@ -279,16 +305,21 @@ export async function updateStatus(req, res) {
       [newStatus, id]
     );
     await addHistory(id, userId, 'status_change', ticket.status, newStatus);
-    await emailService.notifyStatusChange(ticket, newStatus, req.user.username, ticket.created_by);
-        if (newStatus === 'Clôturé') {
-        await emailService.notifyClosed(ticket, ticket.created_by, req.user.username);
+
+    // userId passé comme actorId — le technicien/admin qui change le statut
+    // ne reçoit pas la notification destinée au créateur
+    await emailService.notifyStatusChange(
+      ticket, newStatus, req.user.username, ticket.created_by, userId
+    );
+    if (newStatus === 'Clôturé') {
+      await emailService.notifyClosed(ticket, ticket.created_by, req.user.username, userId);
     }
-    return res.json({ success: true, message: `Statut mis à jour : ${newStatus}` });
+
+    return res.json({ success: true, message: t(req, 'status_updated', { status: newStatus }) });
   } catch (err) {
     console.error('[updateStatus]', err);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
-  
 }
 
 // ─── PATCH /api/tickets/:id/assign — Admin seulement ─────────────────────────
@@ -296,11 +327,11 @@ export async function assignTicket(req, res) {
   const { id } = req.params;
   const { technicianId } = req.body;
   const { id: userId } = req.user;
-  if (isNaN(id)) return res.status(400).json({ success: false, message: 'ID invalide.' });
+  if (isNaN(id)) return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
 
   try {
     const { rows } = await pool.query('SELECT * FROM tickets WHERE id = $1', [id]);
-    if (!rows[0]) return res.status(404).json({ success: false, message: 'Ticket introuvable.' });
+    if (!rows[0]) return res.status(404).json({ success: false, message: t(req, 'ticket_not_found') });
 
     const { rows: techRows } = await pool.query(
       `SELECT u.id, u.username FROM users u
@@ -308,18 +339,22 @@ export async function assignTicket(req, res) {
        WHERE u.id = $1 AND r.name = 'Technicien'`,
       [technicianId]
     );
-    if (!techRows[0]) return res.status(400).json({ success: false, message: 'Technicien invalide.' });
+    if (!techRows[0]) return res.status(400).json({ success: false, message: t(req, 'technician_invalid') });
 
     await pool.query(
       `UPDATE tickets SET assigned_to = $1, status = 'Assigné', updated_at = NOW() WHERE id = $2`,
       [technicianId, id]
     );
     await addHistory(id, userId, 'manual_assigned', String(rows[0].assigned_to), String(technicianId));
-    await emailService.notifyAssigned(rows[0], technicianId, req.user.username);
-    return res.json({ success: true, message: `Ticket assigné à ${techRows[0].username}` });
+
+    // userId passé comme actorId — si l'admin s'assigne lui-même le ticket
+    // (cas rare mais possible), il ne recevra pas la notification
+    await emailService.notifyAssigned(rows[0], technicianId, req.user.username, userId);
+
+    return res.json({ success: true, message: t(req, 'ticket_assigned', { username: techRows[0].username }) });
   } catch (err) {
     console.error('[assignTicket]', err);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -328,13 +363,13 @@ export async function transferTicket(req, res) {
   const { id } = req.params;
   const { technicianId } = req.body;
   const { id: userId } = req.user;
-  if (isNaN(id)) return res.status(400).json({ success: false, message: 'ID invalide.' });
+  if (isNaN(id)) return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
 
   try {
     const { rows } = await pool.query('SELECT * FROM tickets WHERE id = $1', [id]);
-    if (!rows[0]) return res.status(404).json({ success: false, message: 'Ticket introuvable.' });
+    if (!rows[0]) return res.status(404).json({ success: false, message: t(req, 'ticket_not_found') });
     if (rows[0].assigned_to !== userId)
-      return res.status(403).json({ success: false, message: 'Vous n\'êtes pas assigné à ce ticket.' });
+      return res.status(403).json({ success: false, message: t(req, 'not_assigned_to_ticket') });
 
     const { rows: techRows } = await pool.query(
       `SELECT u.id, u.username FROM users u
@@ -342,7 +377,7 @@ export async function transferTicket(req, res) {
        WHERE u.id = $1 AND r.name = 'Technicien' AND u.id != $2`,
       [technicianId, userId]
     );
-    if (!techRows[0]) return res.status(400).json({ success: false, message: 'Technicien invalide.' });
+    if (!techRows[0]) return res.status(400).json({ success: false, message: t(req, 'technician_invalid') });
 
     await pool.query(
       `UPDATE tickets SET assigned_to = $1, updated_at = NOW() WHERE id = $2`,
@@ -350,10 +385,14 @@ export async function transferTicket(req, res) {
     );
     await addHistory(id, userId, 'transferred', String(userId), String(technicianId));
 
-    return res.json({ success: true, message: `Ticket transféré à ${techRows[0].username}` });
+    // userId comme actorId — le technicien qui transfère ne reçoit pas
+    // la notification destinée au nouveau technicien assigné
+    await emailService.notifyAssigned(rows[0], technicianId, req.user.username, userId);
+
+    return res.json({ success: true, message: t(req, 'ticket_transferred', { username: techRows[0].username }) });
   } catch (err) {
     console.error('[transferTicket]', err);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -362,57 +401,63 @@ export async function addComment(req, res) {
   const { id } = req.params;
   const { message, is_internal } = req.body;
   const { role, id: userId } = req.user;
-  if (isNaN(id)) return res.status(400).json({ success: false, message: 'ID invalide.' });
-  if (!message?.trim()) return res.status(400).json({ success: false, message: 'Message obligatoire.' });
+  if (isNaN(id)) return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
+  if (!message?.trim()) return res.status(400).json({ success: false, message: t(req, 'message_required') });
 
   const internal = (role === 'Technicien' || role === 'Admin') && is_internal === true;
 
   try {
     const { rows: ticketRows } = await pool.query('SELECT * FROM tickets WHERE id = $1', [id]);
-    if (!ticketRows[0]) return res.status(404).json({ success: false, message: 'Ticket introuvable.' });
+    if (!ticketRows[0]) return res.status(404).json({ success: false, message: t(req, 'ticket_not_found') });
 
     if (role === 'Agent' && ticketRows[0].created_by !== userId)
-      return res.status(403).json({ success: false, message: 'Accès refusé.' });
+      return res.status(403).json({ success: false, message: t(req, 'access_denied') });
 
-    // ✅ Utilise user_id (pas author_id)
     const { rows } = await pool.query(
       `INSERT INTO ticket_comments (ticket_id, user_id, message, is_internal)
        VALUES ($1, $2, $3, $4) RETURNING *`,
       [id, userId, message.trim(), internal]
     );
     await pool.query('UPDATE tickets SET updated_at = NOW() WHERE id = $1', [id]);
-    await addHistory(id, userId, internal ? 'internal_note' : 'comment_added', null, message.trim().substring(0, 100));
+    await addHistory(
+      id, userId,
+      internal ? 'internal_note' : 'comment_added',
+      null, message.trim().substring(0, 100)
+    );
+
+    // userId comme actorId — celui qui poste le commentaire ne reçoit pas
+    // sa propre notification
     await emailService.notifyComment(
       ticketRows[0], req.user.username, internal,
-      ticketRows[0].created_by, ticketRows[0].assigned_to
+      ticketRows[0].created_by, ticketRows[0].assigned_to, userId
     );
+
     return res.status(201).json({ success: true, data: rows[0] });
   } catch (err) {
     console.error('[addComment]', err);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
-  
 }
 
 // ─── DELETE /api/tickets/:id — Admin seulement ───────────────────────────────
 export async function deleteTicket(req, res) {
   const { id } = req.params;
-  if (isNaN(id)) return res.status(400).json({ success: false, message: 'ID invalide.' });
+  if (isNaN(id)) return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
   try {
     const { rowCount } = await pool.query('DELETE FROM tickets WHERE id = $1', [id]);
-    if (rowCount === 0) return res.status(404).json({ success: false, message: 'Ticket introuvable.' });
-    return res.json({ success: true, message: 'Ticket supprimé.' });
+    if (rowCount === 0) return res.status(404).json({ success: false, message: t(req, 'ticket_not_found') });
+    return res.json({ success: true, message: t(req, 'ticket_deleted') });
   } catch (err) {
     console.error('[deleteTicket]', err);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
-// ─── GET /api/tickets/asset/:assetId — Tickets d'un équipement ──
+// ─── GET /api/tickets/asset/:assetId ─────────────────────────────────────────
 export async function getTicketsByAsset(req, res) {
   const { assetId } = req.params;
   if (isNaN(assetId))
-    return res.status(400).json({ success: false, message: 'ID invalide.' });
+    return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
 
   try {
     const { rows } = await pool.query(
@@ -429,11 +474,11 @@ export async function getTicketsByAsset(req, res) {
     return res.json({ success: true, data: rows });
   } catch (err) {
     console.error('[getTicketsByAsset]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
-// ─── GET /api/tickets/reliability — Indicateur fiabilité ─────
+// ─── GET /api/tickets/reliability ────────────────────────────────────────────
 export async function getReliabilityAlerts(req, res) {
   try {
     const { rows } = await pool.query(`
@@ -444,6 +489,100 @@ export async function getReliabilityAlerts(req, res) {
     return res.json({ success: true, data: rows });
   } catch (err) {
     console.error('[getReliabilityAlerts]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
+  }
+}
+
+// ─── POST /api/tickets/:id/remote-session — Technicien/Admin ─────────────────
+// Le technicien initie une session à distance en fournissant l'ID ou le lien
+// généré par son outil (TeamViewer, AnyDesk, RustDesk, etc.)
+export async function startRemoteSession(req, res) {
+  const { id } = req.params;
+  const { session_id, tool, session_url } = req.body;
+  const { id: userId, role } = req.user;
+
+  if (isNaN(id))
+    return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
+
+  if (!session_id && !session_url)
+    return res.status(400).json({
+      success: false,
+      message: t(req, 'remote_session_required'),
+    });
+
+  try {
+    const { rows } = await pool.query('SELECT * FROM tickets WHERE id = $1', [id]);
+    if (!rows[0])
+      return res.status(404).json({ success: false, message: t(req, 'ticket_not_found') });
+
+    const ticket = rows[0];
+
+    if (role === 'Technicien' && ticket.assigned_to !== userId)
+      return res.status(403).json({
+        success: false,
+        message: t(req, 'not_assigned_to_ticket'),
+      });
+
+    await pool.query(
+      `UPDATE tickets SET
+         remote_session_id   = $1,
+         remote_session_tool = $2,
+         remote_session_url  = $3,
+         remote_session_at   = NOW(),
+         remote_session_by   = $4
+       WHERE id = $5`,
+      [session_id || null, tool || 'Autre', session_url || null, userId, id]
+    );
+
+    await addHistory(id, userId, 'remote_session_started', null,
+      `Session ${tool || 'distante'} : ${session_id || session_url}`
+    );
+
+    // Notifier l'agent créateur du ticket
+    await emailService.notifyRemoteSession(ticket, req.user.username, session_id, tool, userId);
+
+    return res.json({
+      success: true,
+      message: t(req, 'remote_session_started'),
+    });
+  } catch (err) {
+    console.error('[startRemoteSession]', err.message);
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
+  }
+}
+
+// ─── DELETE /api/tickets/:id/remote-session — clôturer la session ─────────────
+export async function endRemoteSession(req, res) {
+  const { id } = req.params;
+  const { id: userId, role } = req.user;
+
+  if (isNaN(id))
+    return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
+
+  try {
+    const { rows } = await pool.query('SELECT * FROM tickets WHERE id = $1', [id]);
+    if (!rows[0])
+      return res.status(404).json({ success: false, message: t(req, 'ticket_not_found') });
+
+    if (role === 'Technicien' && rows[0].assigned_to !== userId)
+      return res.status(403).json({ success: false, message: t(req, 'access_denied') });
+
+    await pool.query(
+      `UPDATE tickets SET
+         remote_session_id   = NULL,
+         remote_session_tool = NULL,
+         remote_session_url  = NULL,
+         remote_session_at   = NULL,
+         remote_session_by   = NULL
+       WHERE id = $1`,
+      [id]
+    );
+
+    await addHistory(id, userId, 'remote_session_ended', null, 'Session à distance clôturée');
+
+    return res.json({ success: true, message: t(req, 'remote_session_ended') });
+  } catch (err) {
+    console.error('[endRemoteSession]', err.message);
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }

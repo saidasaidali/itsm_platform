@@ -21,7 +21,9 @@ import autoTicketingRoutes from './routes/autoTicketingRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import { loadSettings } from './services/settingsService.js';
-
+import chatbotRoutes from './routes/chatbotRoutes.js';
+import languageMiddleware from './middlewares/languageMiddleware.js'
+import { t } from './utils/i18n.js'
 dotenv.config();
 
 const app = express();
@@ -31,12 +33,12 @@ app.use(helmet());
 app.use(cors({
   origin: process.env.CORS_ORIGIN || 'http://localhost:3001',
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], 
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept-Language'],
 }));
 
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: false }));
-
+app.use(languageMiddleware)
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -52,13 +54,14 @@ app.use('/api/cmdb', smartCmdbRoutes);
 app.use('/api/auto-ticketing', autoTicketingRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/chatbot', chatbotRoutes);
 app.use((req, res) => {
-  res.status(404).json({ success: false, message: 'Route introuvable.' });
+  res.status(404).json({ success: false, message: t(req, 'route_not_found') });
 });
 
 app.use((err, req, res, next) => {
   console.error('[ERREUR GLOBALE]', err);
-  res.status(500).json({ success: false, message: 'Erreur interne du serveur.' });
+  res.status(500).json({ success: false, message: t(req, 'internal_server_error') });
 });
 
 loadSettings().then(() => {

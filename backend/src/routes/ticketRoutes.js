@@ -9,6 +9,7 @@ import {
   getTicketsByAsset, getReliabilityAlerts,   // ← nouveaux
 } from '../controllers/ticketController.js';
 
+import { startRemoteSession, endRemoteSession } from '../controllers/ticketController.js';
 const router = Router();
 
 const ticketValidation = [
@@ -30,7 +31,8 @@ router.get('/asset/:assetId', authenticate, authorize('Admin','Technicien'), get
 router.get('/',    authenticate, getTickets);
 router.get('/:id', authenticate, getTicketById);
 router.post('/',   authenticate, authorize('Agent'), ticketValidation, createTicket);
-
+router.post('/:id/remote-session',   authenticate, authorize('Admin', 'Technicien'), startRemoteSession);
+router.delete('/:id/remote-session', authenticate, authorize('Admin', 'Technicien'), endRemoteSession);
 // Transitions
 router.patch('/:id/status',   authenticate, authorize('Admin','Technicien'), updateStatus);
 router.patch('/:id/assign',   authenticate, authorize('Admin'), assignTicket);

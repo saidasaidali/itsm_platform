@@ -1,12 +1,13 @@
 // backend/src/controllers/smartCmdbController.js
 import pool from '../db.js';
 import digitalTwin from '../services/networkDiscovery/digitalTwin.js';
+import { t } from '../utils/i18n.js';
 import relationDetector from '../services/networkDiscovery/relationDetector.js';
 
 // GET /api/cmdb/asset/:id/twin — Digital Twin complet d'un équipement
 export async function getAssetTwin(req, res) {
   const { id } = req.params;
-  if (isNaN(id)) return res.status(400).json({ success: false, message: 'ID invalide.' });
+  if (isNaN(id)) return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
 
   try {
     const { rows: assetRows } = await pool.query(
@@ -15,7 +16,7 @@ export async function getAssetTwin(req, res) {
        WHERE a.id = $1`,
       [id]
     );
-    if (!assetRows[0]) return res.status(404).json({ success: false, message: 'Équipement introuvable.' });
+    if (!assetRows[0]) return res.status(404).json({ success: false, message: t(req, 'asset_not_found') });
 
     const liveState = await digitalTwin.getAssetLiveProfile(id);
     const relations = await relationDetector.getAssetRelations(id);
@@ -45,21 +46,21 @@ export async function getAssetTwin(req, res) {
     });
   } catch (err) {
     console.error('[getAssetTwin]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
 // GET /api/cmdb/user/:userId/map — Carte réseau d'un utilisateur
 export async function getUserMap(req, res) {
   const { userId } = req.params;
-  if (isNaN(userId)) return res.status(400).json({ success: false, message: 'ID invalide.' });
+  if (isNaN(userId)) return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
 
   try {
     const map = await relationDetector.getUserNetworkMap(parseInt(userId));
     return res.json({ success: true, data: map });
   } catch (err) {
     console.error('[getUserMap]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -70,7 +71,7 @@ export async function refreshLiveStates(req, res) {
     return res.json({ success: true, data: result });
   } catch (err) {
     console.error('[refreshLiveStates]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -81,7 +82,7 @@ export async function detectRelations(req, res) {
     return res.json({ success: true, data: { relationsCreated: count } });
   } catch (err) {
     console.error('[detectRelations]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -100,6 +101,6 @@ export async function getLiveDashboard(req, res) {
     return res.json({ success: true, data: rows });
   } catch (err) {
     console.error('[getLiveDashboard]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }

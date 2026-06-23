@@ -1,5 +1,6 @@
 // backend/src/controllers/dashboardController.js
 import pool from '../db.js';
+import { t } from '../utils/i18n.js';
 
 // GET /api/dashboard/realtime — vue temps réel complète
 export async function getRealtimeDashboard(req, res) {
@@ -80,7 +81,7 @@ export async function getRealtimeDashboard(req, res) {
     });
   } catch (err) {
     console.error('[getRealtimeDashboard]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -109,6 +110,6 @@ export async function getNetworkMap(req, res) {
     });
   } catch (err) {
     console.error('[getNetworkMap]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }

@@ -3,20 +3,25 @@
  * Toutes les requêtes passent par ce module qui injecte automatiquement le JWT.
  */
 
+import i18n from '../i18n'
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 const TOKEN_KEY = 'itsm-auth-token'
 
 export const getToken = () => localStorage.getItem(TOKEN_KEY)
 
+const getLang = () => localStorage.getItem('itsm-lang') || 'fr'
+
 const buildHeaders = (extra = {}) => ({
   'Content-Type': 'application/json',
+  'Accept-Language': getLang(),
   ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
   ...extra,
 })
 
 const handleResponse = async (res) => {
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data.message || `Erreur ${res.status}`)
+  if (!res.ok) throw new Error(data.message || i18n.t('api.http_error', { status: res.status }))
   return data
 }
 

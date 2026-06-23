@@ -1,6 +1,7 @@
 // src/controllers/authController.js
 import { validationResult } from 'express-validator';
 import crypto from 'crypto';
+import { t } from '../utils/i18n.js';
 import {
   findUserByEmailOrUsername,
   findUserById,
@@ -29,25 +30,25 @@ export async function login(req, res) {
     const user = await findUserByEmailOrUsername(identifier);
 
     if (!user) {
-      return res.status(401).json({ success: false, message: 'Identifiants incorrects.' });
+      return res.status(401).json({ success: false, message: t(req, 'invalid_credentials') });
     }
 
     const passwordMatch = await comparePassword(password, user.password);
     if (!passwordMatch) {
-      return res.status(401).json({ success: false, message: 'Identifiants incorrects.' });
+      return res.status(401).json({ success: false, message: t(req, 'invalid_credentials') });
     }
 
     if (user.status === 'pending') {
       return res.status(403).json({
         success: false,
-        message: 'Votre compte est en attente de validation par un administrateur.',
+        message: t(req, 'account_pending'),
       });
     }
 
     if (user.status === 'inactive') {
       return res.status(403).json({
         success: false,
-        message: 'Votre compte a été désactivé. Contactez un administrateur.',
+        message: t(req, 'account_disabled'),
       });
     }
 
@@ -67,7 +68,7 @@ export async function login(req, res) {
     });
   } catch (err) {
     console.error('[login]', err);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -85,20 +86,20 @@ export async function register(req, res) {
     if (!publicRoles.includes(Number(role_id))) {
       return res.status(400).json({
         success: false,
-        message: 'Rôle invalide. Seuls les rôles Agent et Technicien sont disponibles à l\'inscription.',
+        message: t(req, 'invalid_register_role'),
       });
     }
 
     if (await isUsernameTaken(username)) {
-      return res.status(409).json({ success: false, message: 'Ce nom d\'utilisateur est déjà utilisé.' });
+      return res.status(409).json({ success: false, message: t(req, 'username_taken') });
     }
 
     if (await isEmailTaken(email)) {
-      return res.status(409).json({ success: false, message: 'Cet email est déjà utilisé.' });
+      return res.status(409).json({ success: false, message: t(req, 'email_taken') });
     }
 
     if (!(await isValidRole(role_id))) {
-      return res.status(400).json({ success: false, message: 'Rôle invalide.' });
+      return res.status(400).json({ success: false, message: t(req, 'invalid_role') });
     }
 
     const hashedPassword = await hashPassword(password);
@@ -112,12 +113,12 @@ export async function register(req, res) {
 
     return res.status(201).json({
       success: true,
-      message: 'Compte créé avec succès. Votre demande est en attente de validation par un administrateur.',
+      message: t(req, 'register_success'),
       user: rows[0],
     });
   } catch (err) {
     console.error('[register]', err);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -126,7 +127,7 @@ export async function me(req, res) {
   try {
     const user = await findUserById(req.user.id);
     if (!user) {
-      return res.status(404).json({ success: false, message: 'Utilisateur introuvable.' });
+      return res.status(404).json({ success: false, message: t(req, 'user_not_found') });
     }
     return res.status(200).json({
       success: true,
@@ -141,7 +142,7 @@ export async function me(req, res) {
     });
   } catch (err) {
     console.error('[me]', err);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -149,7 +150,7 @@ export async function me(req, res) {
 export function logout(req, res) {
   return res.status(200).json({
     success: true,
-    message: 'Déconnexion effectuée.',
+    message: t(req, 'logout_success'),
   });
 }
 
@@ -157,7 +158,7 @@ export function logout(req, res) {
 export async function forgotPassword(req, res) {
   const { email } = req.body;
   if (!email) {
-    return res.status(400).json({ success: false, message: 'Email requis.' });
+    return res.status(400).json({ success: false, message: t(req, 'email_required') });
   }
 
   try {
@@ -170,7 +171,7 @@ export async function forgotPassword(req, res) {
     if (!rows[0]) {
       return res.json({
         success: true,
-        message: 'Si ce compte existe, un email de réinitialisation a été envoyé.',
+        message: t(req, 'reset_email_sent'),
       });
     }
 
@@ -189,11 +190,11 @@ export async function forgotPassword(req, res) {
 
     return res.json({
       success: true,
-      message: 'Si ce compte existe, un email de réinitialisation a été envoyé.',
+      message: t(req, 'reset_email_sent'),
     });
   } catch (err) {
     console.error('[forgotPassword]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -206,12 +207,12 @@ export async function checkResetToken(req, res) {
       [token]
     );
     if (!rows[0]) {
-      return res.status(400).json({ success: false, message: 'Lien invalide ou expiré.' });
+      return res.status(400).json({ success: false, message: t(req, 'reset_link_invalid') });
     }
-    return res.json({ success: true, message: 'Lien valide.' });
+    return res.json({ success: true, message: t(req, 'reset_link_valid') });
   } catch (err) {
     console.error('[checkResetToken]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -223,7 +224,7 @@ export async function resetPassword(req, res) {
   if (!password || password.length < 6) {
     return res.status(400).json({
       success: false,
-      message: 'Le mot de passe doit contenir au moins 6 caractères.',
+      message: t(req, 'password_min_length'),
     });
   }
 
@@ -234,7 +235,7 @@ export async function resetPassword(req, res) {
       [token]
     );
     if (!rows[0]) {
-      return res.status(400).json({ success: false, message: 'Lien invalide ou expiré.' });
+      return res.status(400).json({ success: false, message: t(req, 'reset_link_invalid') });
     }
 
     const user = rows[0];
@@ -250,10 +251,10 @@ export async function resetPassword(req, res) {
       [hashed, user.id]
     );
 
-    return res.json({ success: true, message: 'Mot de passe réinitialisé avec succès.' });
+    return res.json({ success: true, message: t(req, 'password_reset_success') });
   } catch (err) {
     console.error('[resetPassword]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -261,7 +262,7 @@ export async function resetPassword(req, res) {
 export async function adminResetPassword(req, res) {
   const { id } = req.params;
   if (isNaN(id)) {
-    return res.status(400).json({ success: false, message: 'ID invalide.' });
+    return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
   }
 
   try {
@@ -269,7 +270,7 @@ export async function adminResetPassword(req, res) {
       `SELECT id, username, email FROM users WHERE id = $1`, [id]
     );
     if (!rows[0]) {
-      return res.status(404).json({ success: false, message: 'Utilisateur introuvable.' });
+      return res.status(404).json({ success: false, message: t(req, 'user_not_found') });
     }
     const user = rows[0];
 
@@ -295,6 +296,6 @@ export async function adminResetPassword(req, res) {
     });
   } catch (err) {
     console.error('[adminResetPassword]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }

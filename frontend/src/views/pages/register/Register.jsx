@@ -10,7 +10,6 @@ import {
   CContainer,
   CForm,
   CFormInput,
-  CFormLabel,
   CFormSelect,
   CInputGroup,
   CInputGroupText,
@@ -19,15 +18,18 @@ import {
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import { cilLockLocked, cilUser, cilEnvelopeClosed, cilPeople } from '@coreui/icons'
+import { useTranslation } from 'react-i18next'
 import { AuthContext } from '../../../auth/AuthProvider'
 
-const ROLES = [
-  { id: 2, label: 'Technicien' },
-  { id: 3, label: 'Agent' },
+const getRoles = (t) => [
+  { id: 2, label: t('register.role_technician') },
+  { id: 3, label: t('register.role_agent') },
 ]
 
 const Register = () => {
   const { register } = useContext(AuthContext)
+  const { t } = useTranslation()
+  const ROLES = getRoles(t)
   const [form, setForm] = useState({
     username: '',
     email: '',
@@ -49,12 +51,12 @@ const Register = () => {
     setError(null)
 
     if (!form.username || !form.email || !form.password || !form.confirmPassword || !form.role_id) {
-      setError('Veuillez remplir tous les champs.')
+      setError(t('register.error_fields'))
       return
     }
 
     if (form.password !== form.confirmPassword) {
-      setError('Les mots de passe ne correspondent pas.')
+      setError(t('register.error_passwords'))
       return
     }
 
@@ -70,7 +72,7 @@ const Register = () => {
       // Pas de redirection automatique — le compte doit être validé par un admin
       setSuccess(true)
     } catch (registerError) {
-      setError(registerError.message || 'Impossible de créer le compte.')
+      setError(registerError.message || t('register.error_generic'))
     } finally {
       setLoading(false)
     }
@@ -86,15 +88,12 @@ const Register = () => {
               <CCard className="p-4 text-center">
                 <CCardBody>
                   <div className="mb-3" style={{ fontSize: '3rem' }}>✅</div>
-                  <h2 className="mb-3">Demande envoyée !</h2>
+                  <h2 className="mb-3">{t('register.pending_title')}</h2>
                   <p className="text-body-secondary mb-4">
-                    Votre compte a été créé avec succès. Un administrateur doit valider votre
-                    accès avant que vous puissiez vous connecter.
-                    <br /><br />
-                    Vous serez notifié dès que votre compte sera activé.
+                    {t('register.pending_desc')}
                   </p>
                   <Link to="/login">
-                    <CButton color="primary">Retour à la connexion</CButton>
+                    <CButton color="primary">{t('register.pending_btn')}</CButton>
                   </Link>
                 </CCardBody>
               </CCard>
@@ -110,12 +109,12 @@ const Register = () => {
     <div className="bg-body-tertiary min-vh-100 d-flex flex-row align-items-center">
       <CContainer>
         <CRow className="justify-content-center">
-          <CCol md={8} xl={10}>
+          <CCol md={7} xl={6}>
             <CCardGroup>
               <CCard className="p-4">
                 <CCardBody>
-                  <h1>Créer un compte</h1>
-                  <p className="text-body-secondary">Inscrivez-vous pour accéder à la plateforme ITSM</p>
+                  <h1>{t('register.title')}</h1>
+                  <p className="text-body-secondary">{t('register.subtitle')}</p>
 
                   {error && <CAlert color="danger">{error}</CAlert>}
 
@@ -126,7 +125,7 @@ const Register = () => {
                         <CIcon icon={cilUser} />
                       </CInputGroupText>
                       <CFormInput
-                        placeholder="Nom d'utilisateur"
+                        placeholder={t('register.username_placeholder')}
                         name="username"
                         value={form.username}
                         onChange={handleChange}
@@ -142,7 +141,7 @@ const Register = () => {
                       </CInputGroupText>
                       <CFormInput
                         type="email"
-                        placeholder="Email"
+                        placeholder={t('register.email_placeholder')}
                         name="email"
                         value={form.email}
                         onChange={handleChange}
@@ -162,7 +161,7 @@ const Register = () => {
                         onChange={handleChange}
                         required
                       >
-                        <option value="">-- Sélectionnez votre rôle --</option>
+                        <option value="">{t('register.role_placeholder')}</option>
                         {ROLES.map((r) => (
                           <option key={r.id} value={r.id}>
                             {r.label}
@@ -178,7 +177,7 @@ const Register = () => {
                       </CInputGroupText>
                       <CFormInput
                         type="password"
-                        placeholder="Mot de passe"
+                        placeholder={t('register.password_placeholder')}
                         name="password"
                         value={form.password}
                         onChange={handleChange}
@@ -194,7 +193,7 @@ const Register = () => {
                       </CInputGroupText>
                       <CFormInput
                         type="password"
-                        placeholder="Confirmer le mot de passe"
+                        placeholder={t('register.confirm_placeholder')}
                         name="confirmPassword"
                         value={form.confirmPassword}
                         onChange={handleChange}
@@ -205,37 +204,23 @@ const Register = () => {
 
                     <div className="d-grid">
                       <CButton type="submit" color="success" disabled={loading}>
-                        {loading ? 'Création en cours...' : 'Créer mon compte'}
+                        {loading ? t('register.loading') : t('register.submit')}
                       </CButton>
                     </div>
                   </CForm>
 
                   <div className="text-center mt-3">
                     <small>
-                      Déjà un compte ?{' '}
+                      {t('register.already_account')}{' '}
                       <Link to="/login" className="text-primary">
-                        Se connecter
+                        {t('register.back_login')}
                       </Link>
                     </small>
                   </div>
                 </CCardBody>
               </CCard>
 
-              <CCard className="text-white bg-primary py-5 d-none d-md-block" style={{ width: '44%' }}>
-                <CCardBody className="text-center">
-                  <div>
-                    <h2>Bienvenue</h2>
-                    <p>
-                      Gérez les tickets, le parc matériel, la base de connaissance et les
-                      notifications depuis une interface ITSM dédiée.
-                    </p>
-                    <hr className="border-white opacity-50 my-4" />
-                    <p className="mb-0 small opacity-75">
-                      ⏳ Après votre inscription, un administrateur validera votre accès.
-                    </p>
-                  </div>
-                </CCardBody>
-              </CCard>
+            
             </CCardGroup>
           </CCol>
         </CRow>

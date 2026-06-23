@@ -1,15 +1,28 @@
 import React, { useContext, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import {
-  CButton, CCard, CCardBody, CCardGroup, CCol, CContainer,
-  CForm, CFormInput, CInputGroup, CInputGroupText, CRow, CAlert,
+  CButton,
+  CCard,
+  CCardBody,
+  CCol,
+  CContainer,
+  CForm,
+  CFormInput,
+  CInputGroup,
+  CInputGroupText,
+  CRow,
+  CAlert,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import { cilLockLocked, cilUser, cilArrowLeft } from '@coreui/icons'
+import { useTranslation } from 'react-i18next'
+
 import { AuthContext } from '../../../auth/AuthProvider'
+import LanguageToggle from '../../../components/LanguageToggle'
 
 const Login = () => {
   const { currentUser, login, authError } = useContext(AuthContext)
+  const { t } = useTranslation()
   const [credentials, setCredentials] = useState({ identifier: '', password: '' })
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -30,7 +43,7 @@ const Login = () => {
       await login(credentials)
       navigate('/dashboard', { replace: true })
     } catch (err) {
-      setError(err.message || 'Identifiants invalides')
+      setError(err.message || t('login.error_invalid'))
     } finally {
       setLoading(false)
     }
@@ -39,77 +52,96 @@ const Login = () => {
   return (
     <div className="bg-body-tertiary min-vh-100 d-flex flex-row align-items-center">
       <CContainer>
-        {/* ← Retour à l'accueil */}
         <CRow className="justify-content-center mb-3">
           <CCol md={8} xl={6}>
-            <Link to="/" style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              color: '#6c757d', textDecoration: 'none', fontSize: 14,
-              transition: 'color 0.2s',
-            }}
-              onMouseEnter={e => e.currentTarget.style.color = '#0d6efd'}
-              onMouseLeave={e => e.currentTarget.style.color = '#6c757d'}
-            >
-              <CIcon icon={cilArrowLeft} size="sm" />
-              Retour à l'accueil
-            </Link>
+            <div className="d-flex justify-content-between align-items-center gap-3">
+              <Link
+                to="/"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  color: '#6c757d',
+                  textDecoration: 'none',
+                  fontSize: 14,
+                  transition: 'color 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = '#0d6efd'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = '#6c757d'
+                }}
+              >
+                <CIcon icon={cilArrowLeft} size="sm" />
+                {t('login.back_home')}
+              </Link>
+              <LanguageToggle />
+            </div>
           </CCol>
         </CRow>
 
         <CRow className="justify-content-center">
-          <CCol md={8} xl={6}>
-            <CCardGroup>
-              <CCard className="p-4">
-                <CCardBody>
-                  <h1>Connexion</h1>
-                  <p className="text-body-secondary">Connectez-vous à votre espace ITSM</p>
-                  {error && <CAlert color="danger">{error}</CAlert>}
-                  {authError && !error && <CAlert color="danger">{authError}</CAlert>}
-                  <CForm onSubmit={handleSubmit}>
-                    <CInputGroup className="mb-3">
-                      <CInputGroupText><CIcon icon={cilUser} /></CInputGroupText>
-                      <CFormInput
-                        placeholder="Identifiant (username ou email)"
-                        name="identifier"
-                        value={credentials.identifier}
-                        onChange={handleChange}
-                        autoComplete="username"
-                        required
-                      />
-                    </CInputGroup>
-                    <CInputGroup className="mb-4">
-                      <CInputGroupText><CIcon icon={cilLockLocked} /></CInputGroupText>
-                      <CFormInput
-                        type="password"
-                        placeholder="Mot de passe"
-                        name="password"
-                        value={credentials.password}
-                        onChange={handleChange}
-                        autoComplete="current-password"
-                        required
-                      />
-                    </CInputGroup>
-                    <div className="d-grid">
-                      <CButton type="submit" color="primary" disabled={loading}>
-                        {loading ? 'Connexion...' : 'Se connecter'}
-                      </CButton>
-                    </div>
-                  </CForm>
-                </CCardBody>
-              </CCard>
+          <CCol md={3} xl={6}>
+            <CCard className="p-4">
+              <CCardBody>
+                <h1>{t('login.title')}</h1>
+                <p className="text-body-secondary">{t('login.subtitle')}</p>
+                {error && <CAlert color="danger">{error}</CAlert>}
+                {authError && !error && <CAlert color="danger">{authError}</CAlert>}
+                <CForm onSubmit={handleSubmit}>
+                  <CInputGroup className="mb-3">
+                    <CInputGroupText>
+                      <CIcon icon={cilUser} />
+                    </CInputGroupText>
+                    <CFormInput
+                      placeholder={t('login.identifier_placeholder')}
+                      name="identifier"
+                      value={credentials.identifier}
+                      onChange={handleChange}
+                      autoComplete="username"
+                      required
+                    />
+                  </CInputGroup>
+                  <CInputGroup className="mb-4">
+                    <CInputGroupText>
+                      <CIcon icon={cilLockLocked} />
+                    </CInputGroupText>
+                    <CFormInput
+                      type="password"
+                      placeholder={t('login.password_placeholder')}
+                      name="password"
+                      value={credentials.password}
+                      onChange={handleChange}
+                      autoComplete="current-password"
+                      required
+                    />
+                  </CInputGroup>
+                  <div className="d-grid">
+                    <CButton type="submit" color="primary" disabled={loading}>
+                      {loading ? t('login.loading') : t('login.submit')}
+                    </CButton>
+                  </div>
+                </CForm>
 
-              <CCard className="text-white bg-primary py-5 d-none d-md-block" style={{ width: '44%' }}>
-                <CCardBody className="text-center">
-                  <h2>Bienvenue</h2>
-                  <p>Gérez les tickets, le parc matériel, la base de connaissance et les notifications depuis une interface ITSM dédiée.</p>
+                <div className="text-center mt-3">
+                  <Link to="/forgot-password" className="small text-decoration-none">
+                    {t('login.forgot_password')}
+                  </Link>
+                </div>
+
+                <div className="text-center mt-4">
+                  <div className="text-body-secondary mb-3">
+                    <span>{t('common.or')}</span>
+                  </div>
                   <Link to="/register">
-                    <CButton color="light" className="mt-3" tabIndex={-1}>
-                      Créer un compte
+                    <CButton color="success" variant="outline">
+                      {t('login.register_link')}
                     </CButton>
                   </Link>
-                </CCardBody>
-              </CCard>
-            </CCardGroup>
+                </div>
+              </CCardBody>
+            </CCard>
           </CCol>
         </CRow>
       </CContainer>

@@ -1,6 +1,7 @@
 // src/views/users/UserForm.jsx
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   CButton,
   CCard,
@@ -14,13 +15,15 @@ import {
   CAlert,
   CSpinner,
 } from '@coreui/react'
+import { translateRole } from '../../utils/translate'
 import { createUser, getUserById, updateUser, getRoles } from '../../services/userService'
 
 const UserForm = () => {
   const navigate = useNavigate()
   const { userId } = useParams()
-  const id = userId 
+  const id = userId
   const isEditMode = Boolean(id)
+  const { t } = useTranslation()
 
   const [roles, setRoles] = useState([])
   const [userData, setUserData] = useState({
@@ -47,10 +50,10 @@ const UserForm = () => {
             role_id:  user.role_id,
           })
         })
-        .catch(() => setError('Impossible de charger l\'utilisateur.'))
+        .catch(() => setError(t('users.form_load_error')))
         .finally(() => setLoading(false))
     }
-  }, [id, isEditMode])
+  }, [id, isEditMode, t])
 
   // ─── Handlers ──────────────────────────────────────────────────────────────
   const handleChange = (event) => {
@@ -84,7 +87,7 @@ const UserForm = () => {
       }
       navigate('/users')
     } catch (submitError) {
-      setError(submitError.message || `Impossible de ${isEditMode ? 'modifier' : 'créer'} l'utilisateur.`)
+      setError(submitError.message || (isEditMode ? t('users.form_update_error') : t('users.form_create_error')))
     } finally {
       setSaving(false)
     }
@@ -95,7 +98,7 @@ const UserForm = () => {
     return (
       <div className="text-center py-5">
         <CSpinner color="primary" />
-        <p className="mt-2 text-muted">Chargement...</p>
+        <p className="mt-2 text-muted">{t('users.loading')}</p>
       </div>
     )
   }
@@ -106,7 +109,7 @@ const UserForm = () => {
       <CCol xs={12} md={8} lg={6}>
         <CCard className="mb-4">
           <CCardHeader className="fw-semibold">
-            {isEditMode ? `Modifier l'utilisateur` : 'Créer un utilisateur'}
+            {isEditMode ? t('users.form_edit_title') : t('users.add_user')}
           </CCardHeader>
           <CCardBody>
             {error && <CAlert color="danger">{error}</CAlert>}
@@ -117,7 +120,7 @@ const UserForm = () => {
                 {/* Nom d'utilisateur */}
                 <CCol md={6}>
                   <CFormInput
-                    label="Nom d'utilisateur"
+                    label={t('users.col_username')}
                     name="username"
                     value={userData.username}
                     onChange={handleChange}
@@ -130,7 +133,7 @@ const UserForm = () => {
                 <CCol md={6}>
                   <CFormInput
                     type="email"
-                    label="Email"
+                    label={t('users.col_email')}
                     name="email"
                     value={userData.email}
                     onChange={handleChange}
@@ -143,20 +146,20 @@ const UserForm = () => {
                 <CCol md={6}>
                   <CFormInput
                     type="password"
-                    label={isEditMode ? 'Nouveau mot de passe (laisser vide pour ne pas changer)' : 'Mot de passe'}
+                    label={isEditMode ? t('users.form_password_edit') : t('users.form_password')}
                     name="password"
                     value={userData.password}
                     onChange={handleChange}
                     required={!isEditMode}
                     autoComplete="new-password"
-                    placeholder={isEditMode ? 'Laisser vide pour ne pas modifier' : ''}
+                    placeholder={isEditMode ? t('users.form_password_edit_placeholder') : ''}
                   />
                 </CCol>
 
                 {/* Rôle */}
                 <CCol md={6}>
                   <CFormSelect
-                    label="Rôle"
+                    label={t('users.col_role')}
                     name="role_id"
                     value={userData.role_id}
                     onChange={handleChange}
@@ -164,7 +167,7 @@ const UserForm = () => {
                   >
                     {roles.map((role) => (
                       <option key={role.id} value={role.id}>
-                        {role.label}
+                        {translateRole(role.label)}
                       </option>
                     ))}
                   </CFormSelect>
@@ -175,8 +178,8 @@ const UserForm = () => {
               <div className="mt-4 d-flex gap-2">
                 <CButton type="submit" color="primary" disabled={saving}>
                   {saving
-                    ? 'Enregistrement...'
-                    : isEditMode ? 'Enregistrer les modifications' : 'Créer l\'utilisateur'}
+                    ? t('users.form_saving')
+                    : isEditMode ? t('users.form_save_changes') : t('users.form_create_btn')}
                 </CButton>
                 <CButton
                   type="button"
@@ -185,7 +188,7 @@ const UserForm = () => {
                   onClick={() => navigate('/users')}
                   disabled={saving}
                 >
-                  Annuler
+                  {t('users.modal_cancel')}
                 </CButton>
               </div>
             </CForm>

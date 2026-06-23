@@ -1,5 +1,6 @@
 // src/controllers/notificationController.js
 import pool from '../db.js';
+import { t } from '../utils/i18n.js';
 
 // ─── GET /api/notifications ───────────────────────────────────
 export async function getNotifications(req, res) {
@@ -14,7 +15,7 @@ export async function getNotifications(req, res) {
     return res.json({ success: true, data: rows });
   } catch (err) {
     console.error('[getNotifications]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -30,7 +31,7 @@ export async function getUnreadCount(req, res) {
     return res.json({ success: true, count: parseInt(rows[0].count) });
   } catch (err) {
     console.error('[getUnreadCount]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -38,7 +39,7 @@ export async function getUnreadCount(req, res) {
 export async function markRead(req, res) {
   const { id } = req.params;
   if (isNaN(id))
-    return res.status(400).json({ success: false, message: 'ID invalide.' });
+    return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
   try {
     const { rows } = await pool.query(
       `UPDATE notifications SET "read" = TRUE
@@ -46,11 +47,11 @@ export async function markRead(req, res) {
       [id, req.user.id]
     );
     if (!rows[0])
-      return res.status(404).json({ success: false, message: 'Notification introuvable.' });
+      return res.status(404).json({ success: false, message: t(req, 'notification_not_found') });
     return res.json({ success: true, data: rows[0] });
   } catch (err) {
     console.error('[markRead]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -62,10 +63,10 @@ export async function markAllRead(req, res) {
        WHERE user_id = $1 AND "read" = FALSE`,
       [req.user.id]
     );
-    return res.json({ success: true, message: 'Toutes les notifications marquées comme lues.' });
+    return res.json({ success: true, message: t(req, 'all_notifications_read') });
   } catch (err) {
     console.error('[markAllRead]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -73,16 +74,16 @@ export async function markAllRead(req, res) {
 export async function deleteNotification(req, res) {
   const { id } = req.params;
   if (isNaN(id))
-    return res.status(400).json({ success: false, message: 'ID invalide.' });
+    return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
   try {
     await pool.query(
       `DELETE FROM notifications WHERE id = $1 AND user_id = $2`,
       [id, req.user.id]
     );
-    return res.json({ success: true, message: 'Notification supprimée.' });
+    return res.json({ success: true, message: t(req, 'notification_deleted') });
   } catch (err) {
     console.error('[deleteNotification]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -104,7 +105,7 @@ export async function getPreferences(req, res) {
     return res.json({ success: true, data: rows[0] });
   } catch (err) {
     console.error('[getPreferences]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -145,7 +146,7 @@ export async function updatePreferences(req, res) {
     return res.json({ success: true, data: rows[0] });
   } catch (err) {
     console.error('[updatePreferences]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -153,7 +154,7 @@ export async function updatePreferences(req, res) {
 export async function createNotification(req, res) {
   const { title, message, user_id } = req.body;
   if (!title || !message)
-    return res.status(400).json({ success: false, message: 'Titre et message obligatoires.' });
+    return res.status(400).json({ success: false, message: t(req, 'title_message_required') });
   try {
     const { rows } = await pool.query(
       `INSERT INTO notifications (title, message, user_id) VALUES ($1,$2,$3) RETURNING *`,
@@ -162,6 +163,6 @@ export async function createNotification(req, res) {
     return res.status(201).json({ success: true, data: rows[0] });
   } catch (err) {
     console.error('[createNotification]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }

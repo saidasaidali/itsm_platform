@@ -1,8 +1,6 @@
-// src/components/header/AppHeaderDropdown.jsx
 import React, { useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  CAvatar,
   CDropdown,
   CDropdownDivider,
   CDropdownHeader,
@@ -11,23 +9,27 @@ import {
   CDropdownToggle,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilLockLocked, cilSettings, cilUser } from '@coreui/icons'
+import { cilLockLocked, cilSettings } from '@coreui/icons'
+import { useTranslation } from 'react-i18next'
+
 import { AuthContext } from '../../auth/AuthProvider'
+import { translateRole } from '../../utils/translate'
 
 const ROLE_COLORS = {
-  Admin:       '#e74c3c',
-  Technicien:  '#2980b9',
-  Agent:       '#27ae60',
+  Admin: '#e74c3c',
+  Technicien: '#2980b9',
+  Agent: '#27ae60',
 }
 
 const AppHeaderDropdown = () => {
   const { currentUser, logout } = useContext(AuthContext)
   const navigate = useNavigate()
+  const { t } = useTranslation()
 
   const username = currentUser?.username || currentUser?.name || 'U'
-  const role     = currentUser?.role || ''
+  const role = currentUser?.role || ''
   const initiale = username.charAt(0).toUpperCase()
-  const color    = ROLE_COLORS[role] || '#6c757d'
+  const color = ROLE_COLORS[role] || '#6c757d'
 
   const avatarStyle = {
     width: '36px',
@@ -47,32 +49,32 @@ const AppHeaderDropdown = () => {
   return (
     <CDropdown variant="nav-item">
       <CDropdownToggle placement="bottom-end" className="py-0 pe-0" caret={false}>
-        <div style={avatarStyle} title={username}>{initiale}</div>
+        <div style={avatarStyle} title={username}>
+          {initiale}
+        </div>
       </CDropdownToggle>
       <CDropdownMenu className="pt-0" placement="bottom-end">
         <CDropdownHeader className="bg-body-secondary fw-semibold mb-2">
           <div>{username}</div>
-          <small className="text-muted fw-normal">{role}</small>
+          <small className="text-muted fw-normal">{translateRole(role)}</small>
         </CDropdownHeader>
 
-        <CDropdownItem onClick={() => navigate('/profile')} style={{ cursor: 'pointer' }}>
-          <CIcon icon={cilUser} className="me-2" />
-          Mon profil
-        </CDropdownItem>
-
-        <CDropdownItem onClick={() => navigate('/profile')} style={{ cursor: 'pointer' }}>
+        <CDropdownItem onClick={() => navigate('/parametres')} style={{ cursor: 'pointer' }}>
           <CIcon icon={cilSettings} className="me-2" />
-          Paramètres
+          {t('nav.settings')}
         </CDropdownItem>
 
         <CDropdownDivider />
 
         <CDropdownItem
-          onClick={() => { logout(); navigate('/login') }}
+          onClick={() => {
+            logout()
+            navigate('/login')
+          }}
           style={{ cursor: 'pointer', color: '#e74c3c' }}
         >
           <CIcon icon={cilLockLocked} className="me-2" />
-          Déconnexion
+          {t('nav.logout')}
         </CDropdownItem>
       </CDropdownMenu>
     </CDropdown>

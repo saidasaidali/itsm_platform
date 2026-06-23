@@ -1,6 +1,7 @@
 // src/controllers/knowledgeController.js
 import { validationResult } from 'express-validator';
 import pool from '../db.js';
+import { t } from '../utils/i18n.js';
 
 // ─── GET /api/knowledge — Liste + recherche full-text ─────────
 export async function getArticles(req, res) {
@@ -39,7 +40,7 @@ export async function getArticles(req, res) {
     return res.json({ success: true, data: rows });
   } catch (err) {
     console.error('[getArticles]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -47,7 +48,7 @@ export async function getArticles(req, res) {
 export async function searchForChatbot(req, res) {
   const { q } = req.query;
   if (!q?.trim())
-    return res.status(400).json({ success: false, message: 'Paramètre q requis.' });
+    return res.status(400).json({ success: false, message: t(req, 'param_q_required') });
 
   try {
     const { rows } = await pool.query(
@@ -73,7 +74,7 @@ export async function searchForChatbot(req, res) {
     return res.json({ success: true, data: rows });
   } catch (err) {
     console.error('[searchForChatbot]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -81,7 +82,7 @@ export async function searchForChatbot(req, res) {
 export async function getArticleById(req, res) {
   const { id } = req.params;
   if (isNaN(id))
-    return res.status(400).json({ success: false, message: 'ID invalide.' });
+    return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
 
   try {
     // Incrémenter le compteur de vues
@@ -98,12 +99,12 @@ export async function getArticleById(req, res) {
       [id]
     );
     if (!rows[0])
-      return res.status(404).json({ success: false, message: 'Article introuvable.' });
+      return res.status(404).json({ success: false, message: t(req, 'article_not_found') });
 
     return res.json({ success: true, data: rows[0] });
   } catch (err) {
     console.error('[getArticleById]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -131,10 +132,10 @@ export async function createArticle(req, res) {
        RETURNING *`,
       [title, summary, content, category || 'Procédures', cleanKeywords, author_id]
     );
-    return res.status(201).json({ success: true, message: 'Article créé.', data: rows[0] });
+    return res.status(201).json({ success: true, message: t(req, 'article_created'), data: rows[0] });
   } catch (err) {
     console.error('[createArticle]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -146,7 +147,7 @@ export async function updateArticle(req, res) {
 
   const { id } = req.params;
   if (isNaN(id))
-    return res.status(400).json({ success: false, message: 'ID invalide.' });
+    return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
 
   const { title, summary, content, category, keywords, is_published } = req.body;
   const { role, id: userId } = req.user;
@@ -162,11 +163,11 @@ export async function updateArticle(req, res) {
       'SELECT * FROM knowledge_articles WHERE id = $1', [id]
     );
     if (!existing[0])
-      return res.status(404).json({ success: false, message: 'Article introuvable.' });
+      return res.status(404).json({ success: false, message: t(req, 'article_not_found') });
 
     // Un technicien ne peut modifier que ses propres articles
     if (role === 'Technicien' && existing[0].author_id !== userId)
-      return res.status(403).json({ success: false, message: 'Vous ne pouvez modifier que vos articles.' });
+      return res.status(403).json({ success: false, message: t(req, 'can_only_edit_own_articles') });
 
     const { rows } = await pool.query(
       `UPDATE knowledge_articles SET
@@ -181,10 +182,10 @@ export async function updateArticle(req, res) {
        RETURNING *`,
       [title, summary, content, category, cleanKeywords, is_published, id]
     );
-    return res.json({ success: true, message: 'Article mis à jour.', data: rows[0] });
+    return res.json({ success: true, message: t(req, 'article_updated'), data: rows[0] });
   } catch (err) {
     console.error('[updateArticle]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -192,17 +193,17 @@ export async function updateArticle(req, res) {
 export async function deleteArticle(req, res) {
   const { id } = req.params;
   if (isNaN(id))
-    return res.status(400).json({ success: false, message: 'ID invalide.' });
+    return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
 
   try {
     const { rowCount } = await pool.query(
       'DELETE FROM knowledge_articles WHERE id = $1', [id]
     );
     if (rowCount === 0)
-      return res.status(404).json({ success: false, message: 'Article introuvable.' });
-    return res.json({ success: true, message: 'Article supprimé.' });
+      return res.status(404).json({ success: false, message: t(req, 'article_not_found') });
+    return res.json({ success: true, message: t(req, 'article_deleted') });
   } catch (err) {
     console.error('[deleteArticle]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }

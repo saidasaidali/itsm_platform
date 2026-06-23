@@ -4,22 +4,20 @@ import pool from '../db.js';
 import { getSettings } from './settingsService.js';
 
 // ── Transporter dynamique ─────────────────────────────────────
-// Reconstruit à partir des settings (base ou .env via getSettings()) à chaque
-// appel de getTransporter(), pour refléter les changements faits depuis
-// l'interface Paramètres sans redémarrer le serveur.
+// Reconstruit à partir des settings actuels à chaque appel de getTransporter(),
+// pour refléter les changements SMTP faits depuis l'interface sans redémarrer.
 let cachedTransporter = null;
 let cachedSignature = null;
 let smtpAvailable = false;
 
-function buildTransporterSignature(s) {
-  return `${s.smtp_host}|${s.smtp_port}|${s.smtp_user}|${s.smtp_pass}|${s.smtp_from}`;
+function buildSignature(s) {
+  return `${s.smtp_host}|${s.smtp_port}|${s.smtp_user}|${s.smtp_pass}`;
 }
 
 function getTransporter() {
   const s = getSettings();
-  const signature = buildTransporterSignature(s);
+  const signature = buildSignature(s);
 
-  // Si rien n'a changé depuis la dernière fois, réutilise le transporter existant
   if (cachedTransporter && cachedSignature === signature) {
     return cachedTransporter;
   }
@@ -107,7 +105,7 @@ function sendMail(to, subject, html) {
   });
 }
 
-// ── Notification système ──────────────────────────────────────
+// ── Notification système en base ──────────────────────────────
 async function createSystemNotif(userId, title, message, ticketId = null, assetId = null) {
   try {
     await pool.query(
@@ -136,7 +134,9 @@ function getFrontendUrl() {
 }
 
 // ── 1. Ticket créé ────────────────────────────────────────────
-export async function notifyTicketCreated(ticket, creatorName) {
+// actorId : ID de l'agent créateur — les admins qui ont cet ID ne reçoivent
+// pas la notification (un admin-agent ne se notifie pas lui-même)
+export async function notifyTicketCreated(ticket, creatorName, actorId) {
   const url = `${getFrontendUrl()}/#/tickets/${ticket.id}`;
   const { rows: admins } = await pool.query(
     `SELECT u.id, u.email, u.username, COALESCE(np.email_ticket_created, true) AS pref
@@ -146,6 +146,8 @@ export async function notifyTicketCreated(ticket, creatorName) {
      WHERE r.name = 'Admin' AND u.status = 'active'`
   );
   for (const admin of admins) {
+    if (admin.id === actorId) continue;
+
     await createSystemNotif(
       admin.id,
       `Nouveau ticket #${ticket.id}`,
@@ -173,7 +175,11 @@ export async function notifyTicketCreated(ticket, creatorName) {
 }
 
 // ── 2. Changement de statut ───────────────────────────────────
-export async function notifyStatusChange(ticket, newStatus, actorName, creatorId) {
+// actorId : ID du technicien/admin qui change le statut
+// Si le créateur est l'acteur, il ne reçoit pas la notification
+export async function notifyStatusChange(ticket, newStatus, actorName, creatorId, actorId) {
+  if (creatorId === actorId) return;
+
   const url   = `${getFrontendUrl()}/#/tickets/${ticket.id}`;
   const title = `Ticket #${ticket.id} — ${newStatus}`;
   const msg   = `Le statut est passé à "${newStatus}" par ${actorName}`;
@@ -200,7 +206,11 @@ export async function notifyStatusChange(ticket, newStatus, actorName, creatorId
 }
 
 // ── 3. Ticket assigné ─────────────────────────────────────────
-export async function notifyAssigned(ticket, technicianId, actorName) {
+// actorId : ID de celui qui déclenche l'assignation (admin ou créateur auto)
+// Si le technicien assigné est l'acteur, il ne reçoit pas la notification
+export async function notifyAssigned(ticket, technicianId, actorName, actorId) {
+  if (technicianId === actorId) return;
+
   const url  = `${getFrontendUrl()}/#/tickets/${ticket.id}`;
   const tech = await getUserPref(technicianId, 'email_assigned');
   if (!tech) return;
@@ -229,14 +239,20 @@ export async function notifyAssigned(ticket, technicianId, actorName) {
 }
 
 // ── 4. Commentaire ────────────────────────────────────────────
-export async function notifyComment(ticket, commentAuthorName, isInternal, creatorId, assignedToId) {
+// actorId : ID de celui qui poste le commentaire
+// L'acteur est exclu des destinataires — on ne notifie pas quelqu'un
+// de son propre commentaire
+export async function notifyComment(ticket, commentAuthorName, isInternal, creatorId, assignedToId, actorId) {
   const url   = `${getFrontendUrl()}/#/tickets/${ticket.id}`;
   const title = `Nouveau commentaire — Ticket #${ticket.id}`;
   const msg   = `${commentAuthorName} a ajouté un commentaire`;
   const targets = new Set();
   if (!isInternal) targets.add(creatorId);
   if (assignedToId) targets.add(assignedToId);
+
   for (const uid of targets) {
+    if (uid === actorId) continue;
+
     const user = await getUserPref(uid, 'email_comment');
     if (!user) continue;
     await createSystemNotif(uid, title, msg, ticket.id);
@@ -256,6 +272,8 @@ export async function notifyComment(ticket, commentAuthorName, isInternal, creat
 }
 
 // ── 5. SLA dépassé ────────────────────────────────────────────
+// Pas d'actorId : déclenché par le scheduler, pas par un utilisateur
+// Tous les admins et le technicien assigné sont notifiés sans exclusion
 export async function notifySLABreach(ticket) {
   const url   = `${getFrontendUrl()}/#/tickets/${ticket.id}`;
   const title = `SLA dépassé — Ticket #${ticket.id}`;
@@ -306,7 +324,11 @@ export async function notifySLABreach(ticket) {
 }
 
 // ── 6. Ticket clôturé ─────────────────────────────────────────
-export async function notifyClosed(ticket, creatorId, actorName) {
+// actorId : ID de celui qui clôture le ticket
+// Si le créateur est l'acteur, il ne reçoit pas la notification
+export async function notifyClosed(ticket, creatorId, actorName, actorId) {
+  if (creatorId === actorId) return;
+
   const url     = `${getFrontendUrl()}/#/tickets/${ticket.id}`;
   const creator = await getUserPref(creatorId, 'email_closed');
   if (!creator) return;
@@ -363,6 +385,45 @@ export async function sendTempPasswordEmail(email, username, tempPassword) {
   );
 }
 
+// ── Session à distance initiée ────────────────────────────────
+export async function notifyRemoteSession(ticket, technicianName, sessionId, tool, actorId) {
+  if (ticket.created_by === actorId) return;
+
+  const url = `${getFrontendUrl()}/#/tickets/${ticket.id}`;
+  const toolLabel = tool || 'Outil de prise en main à distance';
+
+  await createSystemNotif(
+    ticket.created_by,
+    `Session à distance — Ticket #${ticket.id}`,
+    `${technicianName} a initié une session ${toolLabel}. Rejoignez la session depuis votre ticket.`,
+    ticket.id
+  );
+
+  const creator = await getUserPref(ticket.created_by, 'email_status_change');
+  if (!creator) return;
+
+  sendMail(
+    creator.email,
+    `[ITSM] Session à distance initiée — Ticket #${ticket.id}`,
+    buildHtml(
+      'Session de prise en main à distance',
+      `<p>Bonjour <strong>${creator.username}</strong>,</p>
+       <p>Le technicien <strong>${technicianName}</strong> a initié une session de prise en main
+       à distance pour votre ticket <strong>#${ticket.id} — ${ticket.title}</strong>.</p>
+       ${sessionId
+         ? `<p>ID de session : <strong style="font-size:16px;letter-spacing:1px">${sessionId}</strong></p>`
+         : ''}
+       <p>Cliquez sur le bouton ci-dessous pour accéder au ticket et rejoindre la session.</p>`,
+      url, 'Rejoindre la session'
+    )
+  );
+}
+
+// Dans emailService.js — exposer sendMail publiquement pour autoCloseEngine
+export function sendMailDirect(to, url, html, subject) {
+  sendMail(to, subject, html);
+}
+
 export default {
   notifyTicketCreated,
   notifyStatusChange,
@@ -372,4 +433,6 @@ export default {
   notifyClosed,
   sendPasswordResetEmail,
   sendTempPasswordEmail,
+  notifyRemoteSession,
+  sendMailDirect,
 };

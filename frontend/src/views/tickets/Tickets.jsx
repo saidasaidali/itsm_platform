@@ -1,6 +1,6 @@
-// src/views/tickets/Tickets.jsx
 import React, { useEffect, useMemo, useState, useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { AuthContext } from '../../auth/AuthProvider'
 import {
   CBadge,
@@ -23,102 +23,102 @@ import {
 } from '@coreui/react'
 import { getTickets } from '../../services/ticketService'
 
-// ── Couleurs badges statut ──────────────────────────────────────
 const STATUS_COLORS = {
-  'Nouveau':    'secondary',
-  'Assigné':    'info',
-  'En cours':   'primary',
+  Nouveau: 'secondary',
+  Assigné: 'info',
+  'En cours': 'primary',
   'En attente': 'warning',
-  'Résolu':     'success',
-  'Clôturé':    'dark',
-  'Rouvert':    'danger',
+  Résolu: 'success',
+  Clôturé: 'dark',
+  Rouvert: 'danger',
 }
 
 const PRIORITY_COLORS = {
-  'Haute':   'danger',
-  'Moyenne': 'warning',
-  'Basse':   'success',
+  Haute: 'danger',
+  Moyenne: 'warning',
+  Basse: 'success',
 }
 
-// Tous les statuts du cycle de vie complet
 const ALL_STATUSES = ['Nouveau', 'Assigné', 'En cours', 'En attente', 'Résolu', 'Clôturé', 'Rouvert']
+const PRIORITIES = ['Haute', 'Moyenne', 'Basse']
+const ALL = 'Tous'
 
 const Tickets = () => {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { currentUser } = useContext(AuthContext)
-  const role = currentUser?.role  // 'Admin' | 'Technicien' | 'Agent'
+  const role = currentUser?.role
 
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState('Tous')
-  const [priorityFilter, setPriorityFilter] = useState('Tous')
+  const [statusFilter, setStatusFilter] = useState(ALL)
+  const [priorityFilter, setPriorityFilter] = useState(ALL)
 
   useEffect(() => {
     getTickets()
       .then(setTickets)
-      .catch(() => setError('Erreur lors du chargement des tickets.'))
+      .catch(() => setError(t('tickets.list.load_error')))
       .finally(() => setLoading(false))
-  }, [])
+  }, [t])
 
   const filteredTickets = useMemo(() => {
     const q = query.toLowerCase()
-    return tickets.filter((t) => {
-      const matchesQuery = [t.id, t.title, t.category, t.assignedTo, t.createdBy]
+    return tickets.filter((ticket) => {
+      const matchesQuery = [ticket.id, ticket.title, ticket.category, ticket.assignedTo, ticket.createdBy]
         .join(' ')
         .toLowerCase()
         .includes(q)
-      const matchesStatus   = statusFilter   === 'Tous' || t.status   === statusFilter
-      const matchesPriority = priorityFilter === 'Tous' || t.priority === priorityFilter
+      const matchesStatus = statusFilter === ALL || ticket.status === statusFilter
+      const matchesPriority = priorityFilter === ALL || ticket.priority === priorityFilter
       return matchesQuery && matchesStatus && matchesPriority
     })
   }, [tickets, query, statusFilter, priorityFilter])
 
-  // Statistiques rapides pour la barre de résumé
-  const stats = useMemo(() => ({
-    total:      tickets.length,
-    nonAssigne: tickets.filter((t) => t.status === 'Nouveau').length,
-    enCours:    tickets.filter((t) => t.status === 'En cours').length,
-    resolus:    tickets.filter((t) => t.status === 'Résolu').length,
-  }), [tickets])
+  const stats = useMemo(
+    () => ({
+      total: tickets.length,
+      unassigned: tickets.filter((ticket) => ticket.status === 'Nouveau').length,
+      inProgress: tickets.filter((ticket) => ticket.status === 'En cours').length,
+      resolved: tickets.filter((ticket) => ticket.status === 'Résolu').length,
+    }),
+    [tickets],
+  )
+
+  const translateStatus = (status) => t(`tickets.status.${status}`, { defaultValue: status })
+  const translatePriority = (priority) => t(`tickets.priority.${priority}`, { defaultValue: priority })
+  const translateCategory = (category) => t(`tickets.category.${category}`, { defaultValue: category })
 
   return (
     <>
-      {/* ── En-tête ── */}
       <CRow className="mb-3 align-items-center">
         <CCol>
-          <h3 className="mb-0">Tickets</h3>
-          <small className="text-muted">
-            {role === 'Admin'      && 'Vue globale — tous les tickets'}
-            {role === 'Technicien' && 'Vos tickets assignés'}
-            {role === 'Agent'      && 'Vos demandes'}
-          </small>
+          <h3 className="mb-0">{t('tickets.list.title')}</h3>
+          <small className="text-muted">{t(`tickets.list.subtitle.${role}`, { defaultValue: '' })}</small>
         </CCol>
-        {/* Seul l'agent peut créer un ticket */}
         {role === 'Agent' && (
           <CCol xs="auto">
             <CButton color="primary" onClick={() => navigate('/tickets/new')}>
-              + Nouveau ticket
+              {t('tickets.list.new_ticket')}
             </CButton>
           </CCol>
         )}
       </CRow>
 
-      {/* ── Barre de stats rapides (Admin et Technicien) ── */}
       {(role === 'Admin' || role === 'Technicien') && (
         <CRow className="mb-4 g-3">
           {[
-            { label: 'Total',        value: stats.total,      color: 'primary' },
-            { label: 'Non assignés', value: stats.nonAssigne, color: 'secondary' },
-            { label: 'En cours',     value: stats.enCours,    color: 'info' },
-            { label: 'Résolus',      value: stats.resolus,    color: 'success' },
-          ].map((s) => (
-            <CCol xs={6} md={3} key={s.label}>
+            { label: t('tickets.stats.total'), value: stats.total, color: 'primary' },
+            { label: t('tickets.stats.unassigned'), value: stats.unassigned, color: 'secondary' },
+            { label: t('tickets.stats.in_progress'), value: stats.inProgress, color: 'info' },
+            { label: t('tickets.stats.resolved'), value: stats.resolved, color: 'success' },
+          ].map((stat) => (
+            <CCol xs={6} md={3} key={stat.label}>
               <CCard className="text-center border-0 shadow-sm">
                 <CCardBody className="py-3">
-                  <div className={`fs-2 fw-bold text-${s.color}`}>{s.value}</div>
-                  <div className="text-muted small">{s.label}</div>
+                  <div className={`fs-2 fw-bold text-${stat.color}`}>{stat.value}</div>
+                  <div className="text-muted small">{stat.label}</div>
                 </CCardBody>
               </CCard>
             </CCol>
@@ -126,7 +126,6 @@ const Tickets = () => {
         </CRow>
       )}
 
-      {/* ── Filtres ── */}
       <CRow className="mb-3 g-2">
         <CCol md={5}>
           <CInputGroup>
@@ -134,79 +133,84 @@ const Tickets = () => {
             <input
               type="text"
               className="form-control"
-              placeholder="Rechercher par ID, titre, catégorie..."
+              placeholder={t('tickets.list.search_placeholder')}
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(event) => setQuery(event.target.value)}
             />
           </CInputGroup>
         </CCol>
         <CCol md={3}>
-          <CFormSelect value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-            <option value="Tous">Tous les statuts</option>
-            {ALL_STATUSES.map((s) => (
-              <option key={s} value={s}>{s}</option>
+          <CFormSelect value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+            <option value={ALL}>{t('tickets.filters.all_statuses')}</option>
+            {ALL_STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {translateStatus(status)}
+              </option>
             ))}
           </CFormSelect>
         </CCol>
         <CCol md={3}>
-          <CFormSelect value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}>
-            <option value="Tous">Toutes les priorités</option>
-            <option value="Haute">Haute</option>
-            <option value="Moyenne">Moyenne</option>
-            <option value="Basse">Basse</option>
+          <CFormSelect value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value)}>
+            <option value={ALL}>{t('tickets.filters.all_priorities')}</option>
+            {PRIORITIES.map((priority) => (
+              <option key={priority} value={priority}>
+                {translatePriority(priority)}
+              </option>
+            ))}
           </CFormSelect>
         </CCol>
-        {(query || statusFilter !== 'Tous' || priorityFilter !== 'Tous') && (
+        {(query || statusFilter !== ALL || priorityFilter !== ALL) && (
           <CCol md="auto">
-            <CButton color="outline-secondary" onClick={() => {
-              setQuery(''); setStatusFilter('Tous'); setPriorityFilter('Tous')
-            }}>
-              Réinitialiser
+            <CButton
+              color="outline-secondary"
+              onClick={() => {
+                setQuery('')
+                setStatusFilter(ALL)
+                setPriorityFilter(ALL)
+              }}
+            >
+              {t('common.reset')}
             </CButton>
           </CCol>
         )}
       </CRow>
 
-      {/* ── Tableau ── */}
       <CRow>
         <CCol>
           <CCard>
             <CCardHeader className="d-flex justify-content-between align-items-center">
-              <strong>Liste des tickets</strong>
+              <strong>{t('tickets.list.table_title')}</strong>
               <span className="text-muted small">
-                {filteredTickets.length} résultat{filteredTickets.length !== 1 ? 's' : ''}
+                {t('common.results_count', { count: filteredTickets.length })}
               </span>
             </CCardHeader>
             <CCardBody className="p-0">
               {loading ? (
-                <div className="text-center p-4"><CSpinner /></div>
+                <div className="text-center p-4">
+                  <CSpinner />
+                </div>
               ) : error ? (
                 <div className="text-danger p-3">{error}</div>
               ) : filteredTickets.length === 0 ? (
                 <div className="text-center text-muted p-4">
                   {tickets.length === 0
-                    ? (role === 'Agent'
-                        ? 'Vous n\'avez pas encore créé de ticket.'
-                        : 'Aucun ticket pour le moment.')
-                    : 'Aucun ticket ne correspond à votre recherche.'}
+                    ? role === 'Agent'
+                      ? t('tickets.list.empty_agent')
+                      : t('tickets.list.empty')
+                    : t('tickets.list.no_match')}
                 </div>
               ) : (
                 <CTable hover responsive className="mb-0">
                   <CTableHead color="light">
                     <CTableRow>
                       <CTableHeaderCell>#</CTableHeaderCell>
-                      <CTableHeaderCell>Titre</CTableHeaderCell>
-                      <CTableHeaderCell>Statut</CTableHeaderCell>
-                      <CTableHeaderCell>Priorité</CTableHeaderCell>
-                      <CTableHeaderCell>Catégorie</CTableHeaderCell>
-                      {/* Colonnes conditionnelles selon le rôle */}
-                      {role !== 'Agent' && (
-                        <CTableHeaderCell>Créé par</CTableHeaderCell>
-                      )}
-                      {role !== 'Technicien' && (
-                        <CTableHeaderCell>Assigné à</CTableHeaderCell>
-                      )}
-                      <CTableHeaderCell>Créé le</CTableHeaderCell>
+                      <CTableHeaderCell>{t('tickets.fields.title')}</CTableHeaderCell>
+                      <CTableHeaderCell>{t('tickets.fields.status')}</CTableHeaderCell>
+                      <CTableHeaderCell>{t('tickets.fields.priority')}</CTableHeaderCell>
+                      <CTableHeaderCell>{t('tickets.fields.category')}</CTableHeaderCell>
+                      {role !== 'Agent' && <CTableHeaderCell>{t('tickets.fields.created_by')}</CTableHeaderCell>}
+                      {role !== 'Technicien' && <CTableHeaderCell>{t('tickets.fields.assigned_to')}</CTableHeaderCell>}
+                      <CTableHeaderCell>{t('tickets.fields.created_at')}</CTableHeaderCell>
                       <CTableHeaderCell></CTableHeaderCell>
                     </CTableRow>
                   </CTableHead>
@@ -217,45 +221,39 @@ const Tickets = () => {
                         style={{ cursor: 'pointer' }}
                         onClick={() => navigate(`/tickets/${ticket.id}`)}
                       >
-                        <CTableDataCell className="text-muted small">
-                          #{ticket.id}
-                        </CTableDataCell>
+                        <CTableDataCell className="text-muted small">#{ticket.id}</CTableDataCell>
                         <CTableDataCell>
                           <span className="fw-semibold">{ticket.title}</span>
                         </CTableDataCell>
                         <CTableDataCell>
                           <CBadge color={STATUS_COLORS[ticket.status] || 'secondary'}>
-                            {ticket.status}
+                            {translateStatus(ticket.status)}
                           </CBadge>
                         </CTableDataCell>
                         <CTableDataCell>
                           <CBadge color={PRIORITY_COLORS[ticket.priority] || 'secondary'}>
-                            {ticket.priority}
+                            {translatePriority(ticket.priority)}
                           </CBadge>
                         </CTableDataCell>
                         <CTableDataCell>
-                          {ticket.category || <span className="text-muted">—</span>}
+                          {ticket.category ? translateCategory(ticket.category) : <span className="text-muted">-</span>}
                         </CTableDataCell>
-                        {role !== 'Agent' && (
-                          <CTableDataCell>{ticket.createdBy || '—'}</CTableDataCell>
-                        )}
+                        {role !== 'Agent' && <CTableDataCell>{ticket.createdBy || '-'}</CTableDataCell>}
                         {role !== 'Technicien' && (
                           <CTableDataCell>
                             {ticket.assignedTo || (
-                              <span className="text-muted fst-italic">Non assigné</span>
+                              <span className="text-muted fst-italic">{t('tickets.common.unassigned')}</span>
                             )}
                           </CTableDataCell>
                         )}
-                        <CTableDataCell className="text-muted small">
-                          {ticket.createdAt}
-                        </CTableDataCell>
-                        <CTableDataCell onClick={(e) => e.stopPropagation()}>
+                        <CTableDataCell className="text-muted small">{ticket.createdAt}</CTableDataCell>
+                        <CTableDataCell onClick={(event) => event.stopPropagation()}>
                           <CButton
                             color="outline-primary"
                             size="sm"
                             onClick={() => navigate(`/tickets/${ticket.id}`)}
                           >
-                            Voir
+                            {t('common.view')}
                           </CButton>
                         </CTableDataCell>
                       </CTableRow>

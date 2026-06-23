@@ -1,6 +1,7 @@
 // src/controllers/assetController.js
 import { validationResult } from 'express-validator';
 import pool from '../db.js';
+import { t } from '../utils/i18n.js';
 import anomalyDetector from '../services/networkDiscovery/anomalyDetector.js';
 
 // ─── Utilitaire historique ────────────────────────────────────
@@ -30,7 +31,7 @@ export async function getAssetStats(req, res) {
     return res.json({ success: true, data: rows[0] });
   } catch (err) {
     console.error('[getAssetStats]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -55,7 +56,7 @@ export async function getAssets(req, res) {
     return res.json({ success: true, data: rows });
   } catch (err) {
     console.error('[getAssets]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -77,14 +78,14 @@ export async function getWarrantyAlerts(req, res) {
     return res.json({ success: true, data: rows });
   } catch (err) {
     console.error('[getWarrantyAlerts]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
 // ─── GET /api/assets/:id ──────────────────────────────────────
 export async function getAssetById(req, res) {
   const { id } = req.params;
-  if (isNaN(id)) return res.status(400).json({ success: false, message: 'ID invalide.' });
+  if (isNaN(id)) return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
 
   try {
     const { rows } = await pool.query(
@@ -94,7 +95,7 @@ export async function getAssetById(req, res) {
        WHERE a.id = $1`,
       [id]
     );
-    if (!rows[0]) return res.status(404).json({ success: false, message: 'Asset introuvable.' });
+    if (!rows[0]) return res.status(404).json({ success: false, message: t(req, 'asset_not_found') });
 
     // Historique complet avec auteur
     const { rows: history } = await pool.query(
@@ -120,7 +121,7 @@ export async function getAssetById(req, res) {
     return res.json({ success: true, data: { ...rows[0], history, tickets } });
   } catch (err) {
     console.error('[getAssetById]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 // ─── POST /api/assets ─────────────────────────────────────────
@@ -183,12 +184,12 @@ export async function createAsset(req, res) {
       );
     }
 
-    return res.status(201).json({ success: true, message: 'Asset créé.', data: rows[0] });
+    return res.status(201).json({ success: true, message: t(req, 'asset_created'), data: rows[0] });
   } catch (err) {
     if (err.code === '23505')
-      return res.status(409).json({ success: false, message: 'Tag asset déjà existant.' });
+      return res.status(409).json({ success: false, message: t(req, 'asset_tag_exists') });
     console.error('[createAsset]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -199,7 +200,7 @@ export async function updateAsset(req, res) {
     return res.status(400).json({ success: false, errors: errors.array() });
 
   const { id } = req.params;
-  if (isNaN(id)) return res.status(400).json({ success: false, message: 'ID invalide.' });
+  if (isNaN(id)) return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
 
   const {
     asset_tag, type, brand, model, status, location,
@@ -217,7 +218,7 @@ export async function updateAsset(req, res) {
       [id]
     );
     if (!existing[0])
-      return res.status(404).json({ success: false, message: 'Asset introuvable.' });
+      return res.status(404).json({ success: false, message: t(req, 'asset_not_found') });
     const prev = existing[0];
 
     const newAssignedTo = assigned_to !== undefined
@@ -301,10 +302,10 @@ export async function updateAsset(req, res) {
       );
     }
 
-    return res.json({ success: true, message: 'Asset mis à jour.', data: rows[0] });
+    return res.json({ success: true, message: t(req, 'asset_updated'), data: rows[0] });
   } catch (err) {
     console.error('[updateAsset]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -313,7 +314,7 @@ export async function assignAsset(req, res) {
   const { id } = req.params;
   const { user_id, department, office } = req.body;
   const actorId = req.user.id;
-  if (isNaN(id)) return res.status(400).json({ success: false, message: 'ID invalide.' });
+  if (isNaN(id)) return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
 
   try {
     const { rows: assetRows } = await pool.query(
@@ -324,7 +325,7 @@ export async function assignAsset(req, res) {
       [id]
     );
     if (!assetRows[0])
-      return res.status(404).json({ success: false, message: 'Asset introuvable.' });
+      return res.status(404).json({ success: false, message: t(req, 'asset_not_found') });
     const asset = assetRows[0];
 
     if (asset.assigned_to && asset.assigned_to !== user_id) {
@@ -340,7 +341,7 @@ export async function assignAsset(req, res) {
         'SELECT username FROM users WHERE id = $1', [user_id]
       );
       if (!userRows[0])
-        return res.status(400).json({ success: false, message: 'Utilisateur introuvable.' });
+        return res.status(400).json({ success: false, message: t(req, 'user_not_found') });
       newName = userRows[0].username;
     }
 
@@ -368,23 +369,23 @@ export async function assignAsset(req, res) {
     return res.json({ success: true, message: action });
   } catch (err) {
     console.error('[assignAsset]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
 // ─── DELETE /api/assets/:id ───────────────────────────────────
 export async function deleteAsset(req, res) {
   const { id } = req.params;
-  if (isNaN(id)) return res.status(400).json({ success: false, message: 'ID invalide.' });
+  if (isNaN(id)) return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
 
   try {
     const { rowCount } = await pool.query('DELETE FROM assets WHERE id = $1', [id]);
     if (rowCount === 0)
-      return res.status(404).json({ success: false, message: 'Asset introuvable.' });
-    return res.json({ success: true, message: 'Asset supprimé.' });
+      return res.status(404).json({ success: false, message: t(req, 'asset_not_found') });
+    return res.json({ success: true, message: t(req, 'asset_deleted') });
   } catch (err) {
     console.error('[deleteAsset]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
 
@@ -394,7 +395,7 @@ export async function deleteAsset(req, res) {
 export async function heartbeat(req, res) {
   const apiKey = req.headers['x-api-key'];
   if (!apiKey || apiKey !== process.env.ASSET_AGENT_KEY) {
-    return res.status(401).json({ success: false, message: 'Non autorisé.' });
+    return res.status(401).json({ success: false, message: t(req, 'not_authorized') });
   }
 
   const { hostname, username, ip_address, mac_address, serial, os } = req.body;
@@ -402,7 +403,7 @@ export async function heartbeat(req, res) {
   if (!serial && !mac_address) {
     return res.status(400).json({
       success: false,
-      message: 'serial ou mac_address requis.',
+      message: t(req, 'serial_or_mac_required'),
     });
   }
 
@@ -486,7 +487,7 @@ export async function heartbeat(req, res) {
             [serial || null, mac_address || null]
           );
           if (!existing[0]) {
-            return res.status(409).json({ success: false, message: 'Conflit de données, équipement introuvable après doublon.' });
+            return res.status(409).json({ success: false, message: t(req, 'asset_conflict') });
           }
           asset = existing[0];
           isNew = false;
@@ -542,6 +543,6 @@ export async function heartbeat(req, res) {
     });
   } catch (err) {
     console.error('[heartbeat]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
