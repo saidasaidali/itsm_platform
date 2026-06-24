@@ -644,6 +644,33 @@
     "summary": "Résumé :",
     "keywords": "Mots-clés :"
   },
+  "recommendations": {
+    "title": "Recommandation de technicien",
+    "subtitle": "Basé sur l'historique, les compétences et la charge de travail",
+    "loading": "Analyse en cours...",
+    "no_technicians": "Aucun technicien disponible.",
+    "recommended_label": "Recommandé",
+    "score": "Score global",
+    "category_match": "Correspondance catégorie",
+    "skill_rate": "Taux de résolution",
+    "speed": "Vitesse moyenne",
+    "workload": "Charge actuelle",
+    "active_tickets": "tickets actifs",
+    "avg_hours": "h en moyenne",
+    "resolved": "résolus",
+    "categories": {
+      "Matériel": "Matériel",
+      "Logiciel": "Logiciel",
+      "Réseau": "Réseau",
+      "Accès / Droits": "Accès / Droits",
+      "Imprimante": "Imprimante",
+      "Autre": "Autre"
+    },
+    "btn_use_recommendation": "Utiliser cette recommandation",
+    "btn_select": "Sélectionner",
+    "selected": "Sélectionné",
+    "no_recommendation": "Aucune recommandation disponible pour cette catégorie."
+  },
   "ticket_detail": {
     "load_error": "Erreur lors du chargement du ticket.",
     "status_updated": "Statut mis à jour : {{status}}",

@@ -17,6 +17,7 @@ import {
   transferTicket, addComment, startRemoteSession, endRemoteSession,
 } from '../../services/ticketService'
 import { getActiveTechnicians } from '../../services/userService'
+import { getTechnicianRecommendation } from '../../services/recommendationService'
 import { translateTicketStatus } from '../../utils/translate'
 
 const STATUS_COLORS = {
@@ -51,6 +52,9 @@ const TicketDetail = () => {
   const [selectedTech, setSelectedTech]   = useState('')
   const [assignModal, setAssignModal]     = useState(false)
   const [transferModal, setTransferModal] = useState(false)
+  const [recommendations, setRecommendations] = useState(null)
+  const [recommendationLoading, setRecommendationLoading] = useState(false)
+  const [recommendationModal, setRecommendationModal] = useState(false)
 
   const [remoteModal, setRemoteModal]       = useState(false)
   const [sessionTool, setSessionTool]       = useState('AnyDesk')
@@ -111,10 +115,31 @@ const TicketDetail = () => {
       await assignTicket(ticketId, selectedTech)
       showToast(t('ticket_detail.assign_success'), 'success')
       setAssignModal(false)
+      setRecommendationModal(false)
       fetchTicket()
     } catch (e) {
       showToast(e.message || t('ticket_detail.error'))
     }
+  }
+
+  // ── Recommandation IA ────────────────────────────────────────
+  const handleGetRecommendation = async () => {
+    setRecommendationLoading(true)
+    try {
+      const data = await getTechnicianRecommendation(ticket.category, ticket.priority)
+      setRecommendations(data)
+      setRecommendationModal(true)
+    } catch (e) {
+      showToast(e.message || t('recommendations.no_technicians'))
+    } finally {
+      setRecommendationLoading(false)
+    }
+  }
+
+  const useRecommendation = (techId) => {
+    setSelectedTech(techId)
+    setRecommendationModal(false)
+    setAssignModal(true)
   }
 
   const handleTransfer = async () => {
@@ -352,6 +377,13 @@ const TicketDetail = () => {
                   <CButton color="warning" size="sm"
                     onClick={() => { setSelectedTech(''); setAssignModal(true) }}>
                     {t('ticket_detail.btn_assign')}
+                  </CButton>
+                  <CButton color="info" size="sm"
+                    onClick={handleGetRecommendation}
+                    disabled={recommendationLoading}>
+                    {recommendationLoading
+                      ? t('recommendations.loading')
+                      : t('recommendations.title')}
                   </CButton>
                 </div>
               )}
@@ -612,6 +644,138 @@ const TicketDetail = () => {
           </CCard>
         </CCol>
       </CRow>
+
+      {/* ── Modal Recommandation IA ── */}
+      <CModal visible={recommendationModal} onClose={() => setRecommendationModal(false)} size="lg">
+        <CModalHeader>
+          <CModalTitle>{t('recommendations.title')}</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <p className="text-muted small mb-3">{t('recommendations.subtitle')}</p>
+          
+          {/* Formule de calcul */}
+          <div className="p-3 rounded mb-3" style={{ background: 'var(--cui-tertiary-bg)', border: '1px solid var(--cui-border-color)' }}>
+            <div className="small fw-semibold mb-2">Formule de calcul du score :</div>
+            <div className="small" style={{ fontFamily: 'monospace', fontSize: 11 }}>
+              Score = (Disponibilité × 0.50) + (Compétences × 0.25) + (Résolution × 0.15) + (Vitesse × 0.10)
+            </div>
+            <div className="small text-muted mt-2" style={{ fontSize: 10 }}>
+              <strong>Disponibilité (50%)</strong> : 0 ticket = 100 pts, 1 = 90, 2 = 80, 3 = 60, 4 = 40, 5 = 20, 6+ = 0<br/>
+              <strong>Compétences catégorie (25%)</strong> : taux de résolution dans la catégorie + bonus expérience<br/>
+              <strong>Taux de résolution (15%)</strong> : tickets résolus / tickets totaux (3 derniers mois)<br/>
+              <strong>Vitesse (10%)</strong> : {'< 4h'} = 100 pts, 4-24h = 70-100, 24-72h = 40-70, {'> 72h'} = 0-40
+            </div>
+          </div>
+
+          {!recommendations ? (
+            <div className="text-center p-4">
+              <CSpinner />
+              <p className="mt-2 text-muted">{t('recommendations.loading')}</p>
+            </div>
+          ) : !recommendations.recommended ? (
+            <CAlert color="warning">{t('recommendations.no_technicians')}</CAlert>
+          ) : (
+            <div className="d-flex flex-column gap-3">
+              {recommendations.top3.map((tech, idx) => (
+                <div key={tech.id}
+                  className="p-3 rounded"
+                  style={{
+                    border: idx === 0 ? '2px solid #2563eb' : '1px solid var(--cui-border-color)',
+                    background: idx === 0 ? 'rgba(37,99,235,0.04)' : 'var(--cui-tertiary-bg)',
+                  }}>
+                  <div className="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                      <strong className="fs-5">
+                        {tech.username}
+                        {idx === 0 && (
+                          <CBadge color="primary" className="ms-2">
+                            {t('recommendations.recommended_label')}
+                          </CBadge>
+                        )}
+                      </strong>
+                      <div className="text-muted small mt-1">
+                        {tech.stats?.resolved_tickets || 0} {t('recommendations.resolved')} •
+                        {tech.stats?.active_tickets || 0} {t('recommendations.active_tickets')}
+                        {tech.stats?.avg_resolution_hours && (
+                          <> • {Math.round(tech.stats.avg_resolution_hours)} {t('recommendations.avg_hours')}</>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-end">
+                      <div className="fw-bold fs-4" style={{ color: idx === 0 ? '#2563eb' : 'inherit' }}>
+                        {tech.score}/100
+                      </div>
+                      <div className="text-muted small">{t('recommendations.score')}</div>
+                    </div>
+                  </div>
+
+                  {/* Données réelles de la plateforme */}
+                  <div className="mt-2 p-2 rounded" style={{ background: 'rgba(0,0,0,0.02)', border: '1px solid var(--cui-border-color)' }}>
+                    <div className="small text-muted mb-1" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Données réelles de la plateforme
+                    </div>
+                    <div className="row g-2 small">
+                      <div className="col-6">
+                        <span className="text-muted">Tickets actifs:</span>
+                        <span className="fw-semibold ms-1">{tech.active_tickets}</span>
+                      </div>
+                      <div className="col-6">
+                        <span className="text-muted">Tickets résolus:</span>
+                        <span className="fw-semibold ms-1">{tech.stats?.resolved_tickets || 0}</span>
+                      </div>
+                      {tech.stats?.avg_resolution_hours && (
+                        <div className="col-12">
+                          <span className="text-muted">Vitesse moyenne:</span>
+                          <span className="fw-semibold ms-1">{Math.round(tech.stats.avg_resolution_hours)}h</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <CRow className="g-2 small">
+                    <CCol md={3}>
+                      <div className="p-2 rounded" style={{ background: 'var(--cui-tertiary-bg)' }}>
+                        <div className="text-muted">{t('recommendations.category_match')}</div>
+                        <div className="fw-semibold">{tech.details?.categoryScore || 0}/100</div>
+                      </div>
+                    </CCol>
+                    <CCol md={3}>
+                      <div className="p-2 rounded" style={{ background: 'var(--cui-tertiary-bg)' }}>
+                        <div className="text-muted">{t('recommendations.skill_rate')}</div>
+                        <div className="fw-semibold">{tech.details?.skillScore || 0}/100</div>
+                      </div>
+                    </CCol>
+                    <CCol md={3}>
+                      <div className="p-2 rounded" style={{ background: 'var(--cui-tertiary-bg)' }}>
+                        <div className="text-muted">{t('recommendations.speed')}</div>
+                        <div className="fw-semibold">{tech.details?.speedScore || 0}/100</div>
+                      </div>
+                    </CCol>
+                    <CCol md={3}>
+                      <div className="p-2 rounded" style={{ background: 'var(--cui-tertiary-bg)' }}>
+                        <div className="text-muted">{t('recommendations.workload')}</div>
+                        <div className="fw-semibold">{tech.details?.workloadScore || 0}/100</div>
+                      </div>
+                    </CCol>
+                  </CRow>
+
+                  {idx === 0 && (
+                    <CButton color="primary" size="sm" className="mt-3"
+                      onClick={() => useRecommendation(tech.id)}>
+                      {t('recommendations.btn_use_recommendation')}
+                    </CButton>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" onClick={() => setRecommendationModal(false)}>
+            {t('recommendations.btn_select')}
+          </CButton>
+        </CModalFooter>
+      </CModal>
 
       {/* ── Modal Assignation (Admin) ── */}
       <CModal visible={assignModal} onClose={() => setAssignModal(false)}>

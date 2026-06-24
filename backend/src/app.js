@@ -22,6 +22,7 @@ import settingsRoutes from './routes/settingsRoutes.js';
 import { loadSettings } from './services/settingsService.js';
 import chatbotRoutes from './routes/chatbotRoutes.js';
 import suggestionRoutes from './routes/suggestionRoutes.js';
+import recommendationRoutes from './routes/recommendationRoutes.js';
 import languageMiddleware from './middlewares/languageMiddleware.js';
 import { startMLService, stopMLService } from './services/startMLService.js';
 import { t } from './utils/i18n.js';
@@ -56,6 +57,7 @@ app.use('/api/auto-ticketing', autoTicketingRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/chatbot', chatbotRoutes);
+app.use('/api/recommendations', recommendationRoutes);
 app.use((req, res) => {
   res.status(404).json({ success: false, message: t(req, 'route_not_found') });
 });
