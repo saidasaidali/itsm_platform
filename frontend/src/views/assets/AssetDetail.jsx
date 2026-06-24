@@ -12,9 +12,9 @@ import {
 import CIcon from '@coreui/icons-react'
 import {
   cilCheckCircle, cilUser, cilLockUnlocked, cilLoopCircular,
-  cilPencil, cilClipboard, cilLink, cilWarning,
+  cilPencil, cilClipboard, cilLink, cilWarning, cilTrash,
 } from '@coreui/icons'
-import { getAssetById, assignAsset } from '../../services/assetService'
+import { getAssetById, assignAsset, deleteAsset } from '../../services/assetService'
 import { getUsers } from '../../services/userService'
 import { getTicketsByAsset } from '../../services/ticketService'
 import { getAssetTwin } from '../../services/smartCmdbService'
@@ -57,6 +57,8 @@ const AssetDetail = () => {
   const [assignForm,  setAssignForm]  = useState({ userId: '', department: '', office: '' })
   const [twin,        setTwin]        = useState(null)
   const [twinLoading, setTwinLoading] = useState(false)
+  const [deleteModal, setDeleteModal] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   const showToast = (message, color = 'danger') => {
     addToast(
@@ -241,6 +243,18 @@ const RiskScoreWidget = ({ assetId }) => {
     }
   }
 
+  const handleDelete = async () => {
+    setDeleteLoading(true)
+    try {
+      await deleteAsset(assetId)
+      showToast(t('asset_detail.delete_success'), 'success')
+      navigate('/assets')
+    } catch (e) {
+      showToast(e.message || t('asset_detail.error'))
+      setDeleteLoading(false)
+    }
+  }
+
   // ── Calcul garantie ───────────────────────────────────────────
   const warrantyDaysLeft = asset?.warrantyEnd
     ? Math.ceil((new Date(asset.warrantyEnd) - new Date()) / (1000 * 60 * 60 * 24))
@@ -356,13 +370,17 @@ const RiskScoreWidget = ({ assetId }) => {
                     }}>
                     {asset.assignedTo ? t('asset_detail.btn_reassign') : t('asset_detail.btn_assign')}
                   </CButton>
-                  {asset.assignedTo && (
-                    <CButton color="outline-danger" size="sm" onClick={handleDesaffecter}>
-                      {t('asset_detail.btn_unassign')}
-                    </CButton>
-                  )}
-                </div>
-              )}
+                {asset.assignedTo && (
+                  <CButton color="outline-danger" size="sm" onClick={handleDesaffecter}>
+                    {t('asset_detail.btn_unassign')}
+                  </CButton>
+                )}
+                <CButton color="danger" size="sm" onClick={() => setDeleteModal(true)}>
+                  <CIcon icon={cilTrash} size="sm" className="me-1" />
+                  {t('asset_detail.btn_delete')}
+                </CButton>
+              </div>
+            )}
             </CCardBody>
           </CCard>
 
@@ -587,6 +605,25 @@ const RiskScoreWidget = ({ assetId }) => {
           </CCard>
         </CCol>
       </CRow>
+
+      {/* Modal suppression */}
+      <CModal visible={deleteModal} onClose={() => setDeleteModal(false)}>
+        <CModalHeader>
+          <CModalTitle>{t('asset_detail.delete_modal_title')}</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <p>{t('asset_detail.delete_modal_body', { tag: asset.assetTag })}</p>
+          <p className="text-danger small">{t('asset_detail.delete_modal_warning')}</p>
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" onClick={() => setDeleteModal(false)} disabled={deleteLoading}>
+            {t('common.cancel')}
+          </CButton>
+          <CButton color="danger" onClick={handleDelete} disabled={deleteLoading}>
+            {deleteLoading ? t('common.loading') : t('asset_detail.btn_delete')}
+          </CButton>
+        </CModalFooter>
+      </CModal>
 
       {/* Modal affectation */}
       <CModal visible={assignModal} onClose={() => setAssignModal(false)}>

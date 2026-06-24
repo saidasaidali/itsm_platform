@@ -23,7 +23,8 @@ const assetValidation = [
   body('status').optional()
     .isIn(['En service', 'En panne', 'En maintenance', 'Retiré'])
     .withMessage('Statut invalide.'),
-  body('warranty_end').optional().isDate()
+  body('warranty_end').optional({ checkFalsy: true })
+    .isISO8601()
     .withMessage('Date de fin de garantie invalide.'),
 ];
 

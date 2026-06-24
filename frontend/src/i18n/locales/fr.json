@@ -765,6 +765,10 @@
     "btn_reassign": "Réaffecter",
     "btn_assign": "Affecter",
     "btn_unassign": "Désaffecter",
+    "btn_delete": "Supprimer",
+    "delete_modal_title": "Confirmer la suppression",
+    "delete_modal_body": "Voulez-vous vraiment supprimer l'équipement <strong>{{tag}}</strong> ?",
+    "delete_modal_warning": "Cette action est irréversible. Tous les tickets et l'historique associés seront conservés, mais l'équipement sera retiré de l'inventaire.",
     "live_state_title": "État en direct",
     "online": "En ligne",
     "offline": "Hors ligne",
@@ -801,7 +805,17 @@
     "modal_office_label": "Bureau",
     "modal_office_placeholder": "Bureau 203...",
     "modal_confirm": "Confirmer l'affectation",
-    "modal_cancel": "Annuler"
+    "modal_cancel": "Annuler",
+    "history": {
+      "created": "Équipement {{tag}} ({{brand}} {{model}}) enregistré en inventaire",
+      "assigned": "Affecté à {{username}}",
+      "unassigned": "Désaffecté (était : {{name}})",
+      "status_change": "Statut : {{old}} → {{new}}",
+      "modified": "Emplacement : {{old}} → {{new}}",
+      "detected_auto": "Équipement détecté et créé automatiquement via l'agent (poste \"{{hostname}}\", utilisateur \"{{username}}\")",
+      "reassigned": "Réaffecté à {{username}} (précédent : {{prev}})",
+      "unassigned_reassign": "Désaffecté de {{username}} (réaffectation)"
+    }
   },
   "settings": {
     "title": "Paramètres",

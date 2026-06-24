@@ -115,3 +115,7 @@ export const getWarrantyAlerts = async () => {
     daysRemaining: parseInt(a.days_remaining),
   }))
 }
+
+export const deleteAsset = async (id) => {
+  await api.delete(`/api/assets/${id}`)
+}
