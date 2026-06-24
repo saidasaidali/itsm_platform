@@ -12,6 +12,14 @@ const Chatbot = () => {
   const [messages, setMessages] = useState([])
   const [input, setInput]     = useState('')
   const [loading, setLoading] = useState(false)
+  const [sessionKey] = useState(() => {
+    let key = localStorage.getItem('chatbot_session_key')
+    if (!key) {
+      key = `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+      localStorage.setItem('chatbot_session_key', key)
+    }
+    return key
+  })
   const bottomRef             = useRef(null)
   const inputRef              = useRef(null)
   const navigate              = useNavigate()
@@ -43,7 +51,7 @@ const Chatbot = () => {
     setLoading(true)
 
     try {
-      const data = await askChatbot(text)
+      const data = await askChatbot(text, sessionKey)
       const botMsg = {
         id: Date.now() + 1,
         role: 'bot',
