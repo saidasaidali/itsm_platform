@@ -147,11 +147,19 @@ const App = () => {
 
   // Theme init
   useEffect(() => {
+    // Si pas de hash, convertir le chemin actuel en hash route
     if (!window.location.hash) {
-      window.location.hash = '/'
+      const path = window.location.pathname + window.location.search
+      if (path && path !== '/') {
+        // Rediriger : /tickets → /#/tickets
+        window.location.href = window.location.origin + '/#' + path
+      } else {
+        window.location.hash = '/'
+      }
     }
 
-    const urlParams = new URLSearchParams(window.location.href.split('?')[1])
+    const queryString = window.location.href.split('?')[1] || ''
+    const urlParams = new URLSearchParams(queryString)
     const theme = urlParams
       .get('theme')
       ?.match(/^[A-Za-z0-9\s]+/)?.[0]

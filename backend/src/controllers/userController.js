@@ -3,6 +3,7 @@ import { validationResult } from 'express-validator';
 import pool from '../db.js';
 import { t } from '../utils/i18n.js';
 import { isUsernameTaken, isEmailTaken, isValidRole, findUserById, hashPassword } from '../services/authService.js';
+import * as emailService from '../services/emailService.js';
 import crypto from 'crypto';
 import * as XLSX from 'xlsx';
 
@@ -158,12 +159,61 @@ export async function deleteUser(req, res) {
   if (parseInt(id) === req.user.id) return res.status(400).json({ success: false, message: t(req, 'cannot_delete_self') });
 
   try {
+    console.log(`[deleteUser] Tentative de suppression de l'utilisateur ID: ${id}`);
+    
+    // Vérifier d'abord si l'utilisateur existe
+    const { rows: existing } = await pool.query('SELECT id, username, email FROM users WHERE id = $1', [id]);
+    if (existing.length === 0) {
+      console.log(`[deleteUser] Utilisateur ID ${id} non trouvé`);
+      return res.status(404).json({ success: false, message: t(req, 'user_not_found') });
+    }
+    
+    console.log(`[deleteUser] Utilisateur trouvé:`, existing[0]);
+    
+    // Vérifier les contraintes de clé étrangère avant suppression
+    const { rows: constraints } = await pool.query(`
+      SELECT 
+        tc.constraint_name,
+        tc.table_name,
+        kcu.column_name,
+        ccu.table_name AS foreign_table_name,
+        ccu.column_name AS foreign_column_name
+      FROM information_schema.table_constraints AS tc 
+      JOIN information_schema.key_column_usage AS kcu
+        ON tc.constraint_name = kcu.constraint_name
+      JOIN information_schema.constraint_column_usage AS ccu
+        ON ccu.constraint_name = tc.constraint_name
+      WHERE tc.constraint_type = 'FOREIGN KEY' 
+        AND ccu.table_name = 'users'
+        AND kcu.table_name != 'users'
+    `);
+    
+    console.log(`[deleteUser] Contraintes de clé étrangère trouvées:`, constraints);
+    
+    // Supprimer d'abord les données liées dans les tables de dépendance
+    for (const constraint of constraints) {
+      const { table_name, column_name } = constraint;
+      console.log(`[deleteUser] Suppression dans ${table_name}.${column_name} pour user_id=${id}`);
+      await pool.query(`DELETE FROM ${table_name} WHERE ${column_name} = $1`, [id]);
+    }
+    
+    // Maintenant supprimer l'utilisateur
     const { rowCount } = await pool.query('DELETE FROM users WHERE id = $1', [id]);
-    if (rowCount === 0) return res.status(404).json({ success: false, message: t(req, 'user_not_found') });
+    console.log(`[deleteUser] Lignes supprimées: ${rowCount}`);
+    
+    if (rowCount === 0) {
+      return res.status(404).json({ success: false, message: t(req, 'user_not_found') });
+    }
+    
+    console.log(`[deleteUser] Utilisateur ${id} supprimé avec succès`);
     return res.status(200).json({ success: true, message: t(req, 'user_deleted') });
   } catch (err) {
-    console.error('[deleteUser]', err);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
+    console.error('[deleteUser] Erreur détaillée:', err);
+    return res.status(500).json({ 
+      success: false, 
+      message: t(req, 'server_error'),
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 }
 
@@ -281,12 +331,18 @@ export async function importUsersFromExcel(req, res) {
       );
 
       // Envoyer l'email avec les identifiants
+      console.log('[ImportUsers] Envoi email de bienvenue:', {
+        destinataire: email,
+        nom: `${prenom} ${nom}`,
+        username: finalUsername,
+      });
       await emailService.sendWelcomeEmail(
         email,
         `${prenom} ${nom}`,
         finalUsername,
         tempPassword
       );
+      console.log('[ImportUsers] Email de bienvenue envoyé pour:', email);
 
       results.created.push({
         ligne:    i + 2,

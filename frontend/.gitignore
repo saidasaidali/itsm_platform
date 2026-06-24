@@ -2,3 +2,4 @@
 .env.*
 # dépendances
 node_modules/
+build/.

@@ -3,7 +3,7 @@ import { runADScan } from './adScan.js';
 import { runSNMPScan } from './snmpScan.js';
 import { refreshAllLiveStates } from './digitalTwin.js';
 import { detectPcPrinterRelations } from './relationDetector.js';
-import { runAutoTicketingChecks } from '../autoTicketing/autoTicketEngine.js';
+import { runAutoTicketingChecks, checkMLRiskScores } from '../autoTicketing/autoTicketEngine.js';
 import { getSettings } from '../settingsService.js';
 import { runAutoClose } from '../autoTicketing/autoCloseEngine.js';
 // Horodatage de la dernière exécution de chaque tâche, pour calculer si

@@ -100,7 +100,7 @@ const AssetForm = () => {
       }
       setTimeout(() => navigate('/assets'), 1000)
     } catch (err) {
-      showToast(err.response?.data?.message || t('assets.form.save_error'))
+      showToast(err.message || t('assets.form.save_error'))
     } finally {
       setSaving(false)
     }

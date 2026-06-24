@@ -68,6 +68,42 @@ export async function getRealtimeDashboard(req, res) {
       WHERE type IN ('Ordinateur','Imprimante','Switch','Serveur') AND status != 'Retiré'
     `);
 
+    // 7. ML Risk Score aggregation
+    const { rows: mlRiskStats } = await pool.query(`
+      SELECT
+        COUNT(*) FILTER (WHERE risk_level = 'critique') AS critical_count,
+        COUNT(*) FILTER (WHERE risk_level = 'élevé')    AS high_count,
+        COUNT(*) FILTER (WHERE risk_level = 'modéré')   AS medium_count,
+        COUNT(*) FILTER (WHERE risk_level = 'faible')   AS low_count,
+        ROUND(AVG(risk_score)::numeric, 1)              AS avg_risk_score,
+        COUNT(*)                                         AS total_scored
+      FROM asset_risk_scores
+      WHERE computed_at > NOW() - INTERVAL '24 hours'
+    `);
+
+    // 8. Top 5 assets les plus risqués
+    const { rows: topRiskyAssets } = await pool.query(`
+      SELECT a.id, a.asset_tag, a.type, a.brand, a.model,
+             rs.risk_score, rs.risk_level, rs.computed_at
+      FROM asset_risk_scores rs
+      JOIN assets a ON a.id = rs.asset_id
+      WHERE rs.computed_at > NOW() - INTERVAL '24 hours'
+      ORDER BY rs.risk_score DESC
+      LIMIT 5
+    `);
+
+    // 9. ML prédictions de pannes actives
+    const { rows: mlFailurePredictions } = await pool.query(`
+      SELECT a.id, a.asset_tag, a.type,
+             rs.risk_score, rs.risk_level
+      FROM asset_risk_scores rs
+      JOIN assets a ON a.id = rs.asset_id
+      WHERE rs.risk_level IN ('critique', 'élevé')
+        AND rs.computed_at > NOW() - INTERVAL '24 hours'
+      ORDER BY rs.risk_score DESC
+      LIMIT 10
+    `);
+
     return res.json({
       success: true,
       data: {
@@ -77,6 +113,11 @@ export async function getRealtimeDashboard(req, res) {
         byDepartment,
         autoTickets,
         health: healthStats[0],
+        ml: {
+          riskStats: mlRiskStats[0] || { critical_count: 0, high_count: 0, medium_count: 0, low_count: 0, avg_risk_score: 0, total_scored: 0 },
+          topRiskyAssets: topRiskyAssets || [],
+          failurePredictions: mlFailurePredictions || [],
+        },
       },
     });
   } catch (err) {

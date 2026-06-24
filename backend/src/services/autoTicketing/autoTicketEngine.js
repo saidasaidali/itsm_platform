@@ -133,15 +133,44 @@ export async function checkMissingComputers(daysThreshold = 3) {
 }
 
 // 2. Disque plein (espace libre critique)
+export async function checkDiskSpace(freeGbThreshold = 5) {
+    const { rows } = await pool.query(
+      `SELECT a.id, a.asset_tag, a.type, ls.disk_free_gb
+       FROM assets a
+       JOIN asset_live_state ls ON ls.asset_id = a.id
+       WHERE a.type IN ('Ordinateur', 'Serveur')
+         AND a.status = 'En service'
+         AND ls.disk_free_gb IS NOT NULL
+         AND ls.disk_free_gb < $1
+         AND ls.disk_free_gb > 0`,
+      [freeGbThreshold]
+    );
+
+    let created = 0;
+    for (const asset of rows) {
+      const ticket = await createAutoTicket({
+        assetId:     asset.id,
+        title:       `Espace disque critique — ${asset.asset_tag} (${asset.disk_free_gb} Go restants)`,
+        description: `L'équipement "${asset.asset_tag}" n'a plus que ${asset.disk_free_gb} Go d'espace libre. ` +
+                     `Prévoir un nettoyage ou une extension de stockage.`,
+        category:    'Matériel',
+        priority:    'Haute',
+        triggerType: 'disk_full',
+      });
+      if (ticket) created++;
+    }
+    return created;
+  }
 
 // ── Règle ML : risk score élevé → ticket préventif ────────────────────────────
-async function checkMLRiskScores() {
+export async function checkMLRiskScores() {
   const { rows: assets } = await pool.query(
     `SELECT id, asset_tag, type FROM assets
      WHERE type IN ('Ordinateur', 'Serveur', 'Imprimante')
        AND status = 'En service'`
   );
 
+  let created = 0;
   for (const asset of assets) {
     const prediction = await getFullPrediction(asset.id);
     if (!prediction) continue;
@@ -153,30 +182,33 @@ async function checkMLRiskScores() {
 
     // Ticket préventif si risque critique ET panne prédite
     if (risk.score >= 75 && failure.failure_predicted) {
-      await createAutoTicket({
-        title:        `[ML] Risque critique détecté — ${asset.asset_tag}`,
-        description:  `Le modèle ML prédit un risque de panne pour ${asset.asset_tag}.\n` +
-                      `Score de risque : ${risk.score}/100 (${risk.level}).\n` +
-                      `Probabilité de panne : ${failure.failure_probability}%.`,
-        priority:     'Haute',
-        category:     'Matériel',
-        asset_id:     asset.id,
-        trigger_type: 'ml_high_risk',
+      const ticket = await createAutoTicket({
+        assetId:     asset.id,
+        title:       `[ML] Risque critique — ${asset.asset_tag}`,
+        description: `Le modèle ML prédit un risque de panne pour ${asset.asset_tag}.\n` +
+                     `Score de risque : ${risk.score}/100 (${risk.level}).\n` +
+                     `Probabilité de panne : ${failure.failure_probability}%.`,
+        priority:    'Haute',
+        category:    'Matériel',
+        triggerType: 'ml_high_risk',
       });
+      if (ticket) created++;
     }
     // Ticket préventif si risque élevé seulement
     else if (risk.score >= 50) {
-      await createAutoTicket({
-        title:        `[ML] Risque élevé — ${asset.asset_tag}`,
-        description:  `Score de risque ML : ${risk.score}/100 (${risk.level}).\n` +
-                      `Une intervention préventive est recommandée.`,
-        priority:     'Moyenne',
-        category:     'Matériel',
-        asset_id:     asset.id,
-        trigger_type: 'ml_elevated_risk',
+      const ticket = await createAutoTicket({
+        assetId:     asset.id,
+        title:       `[ML] Risque élevé — ${asset.asset_tag}`,
+        description: `Score de risque ML : ${risk.score}/100 (${risk.level}).\n` +
+                     `Une intervention préventive est recommandée.`,
+        priority:    'Moyenne',
+        category:    'Matériel',
+        triggerType: 'ml_elevated_risk',
       });
+      if (ticket) created++;
     }
   }
+  return created;
 }
 
 // 3. Imprimante hors ligne
@@ -226,6 +258,7 @@ export async function runAutoTicketingChecks() {
 
 export default {
   checkMissingComputers,
+  checkDiskSpace,
   checkMLRiskScores,
   checkPrinterOffline,
   runAutoTicketingChecks,

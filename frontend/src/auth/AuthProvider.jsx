@@ -46,8 +46,8 @@ export const AuthProvider = ({ children }) => {
       // On ignore l'erreur réseau — la déconnexion locale se fait quoi qu'il arrive
     } finally {
       // Nettoyage systématique du localStorage
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+      localStorage.removeItem('itsm-auth-token')
+      localStorage.removeItem('itsm-auth-user')
       setCurrentUser(null)
       setAuthError(null)
     }

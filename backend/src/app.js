@@ -23,6 +23,7 @@ import { loadSettings } from './services/settingsService.js';
 import chatbotRoutes from './routes/chatbotRoutes.js';
 import suggestionRoutes from './routes/suggestionRoutes.js';
 import languageMiddleware from './middlewares/languageMiddleware.js';
+import { startMLService, stopMLService } from './services/startMLService.js';
 import { t } from './utils/i18n.js';
 dotenv.config();
 
@@ -69,8 +70,23 @@ loadSettings().then(() => {
 });
 
 
-app.listen(PORT, "0.0.0.0", () => {
+app.listen(PORT, "0.0.0.0", async () => {
   console.log(`✅ Serveur ITSM démarré sur http://localhost:${PORT}`);
+  // Démarrage automatique du service ML en arrière-plan (aucune commande terminal requise)
+  startMLService().catch((err) =>
+    console.warn('[ML-Launcher] Démarrage ML ignoré (mode dégradé):', err.message)
+  );
 });
 startNetworkDiscovery(); //demarrer la decouverte reseau automatique
+
+// Arrêt propre du service ML à la fermeture du serveur
+process.on('SIGINT', () => {
+  stopMLService();
+  process.exit(0);
+});
+process.on('SIGTERM', () => {
+  stopMLService();
+  process.exit(0);
+});
+
 export default app;

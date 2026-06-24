@@ -10,6 +10,8 @@ import {
   CModalHeader, CModalTitle, CRow, CSpinner,
   CToast, CToastBody, CToaster, CToastHeader,
 } from '@coreui/react'
+import CIcon from '@coreui/icons-react'
+import { cilBook, cilArrowRight, cilCheckCircle } from '@coreui/icons'
 import {
   getTicketById, updateTicketStatus, assignTicket,
   transferTicket, addComment, startRemoteSession, endRemoteSession,
@@ -185,7 +187,8 @@ const TicketDetail = () => {
     (role === 'Agent' && ticket.createdById === userId)
 
   const hasSuggestions = ticket.suggestions?.hasSuggestions &&
-    !['Résolu', 'Clôturé'].includes(ticket.status)
+    !['Résolu', 'Clôturé'].includes(ticket.status) &&
+    (role === 'Agent' || role === 'Technicien' || role === 'Admin')
 
   const translateStatus = (status) => t(`tickets.status.${status}`, { defaultValue: status })
   const translateAction = (action) => t(`ticket_detail.actions.${action}`, { defaultValue: action })
@@ -369,60 +372,157 @@ const TicketDetail = () => {
             </CCardBody>
           </CCard>
 
-          {/* ── Suggestions automatiques ── */}
+          {/* ── Suggestions de résolution — Agent et Technicien ── */}
           {hasSuggestions && (
             <CCard className="mb-4">
               <CCardHeader>
-                <strong>{t('ticket_detail.suggestions_title')}</strong>
+                <strong>{t('ticket_detail.suggestions_title', { defaultValue: 'Suggestions de résolution' })}</strong>
+                <small className="text-muted ms-2">
+                  Basées sur la base de connaissances et les tickets similaires résolus
+                </small>
               </CCardHeader>
               <CCardBody>
+
+                {/* Articles de la base de connaissances */}
                 {ticket.suggestions.articles?.length > 0 && (
-                  <div className="mb-3">
-                    <h6 className="text-muted small text-uppercase mb-2">
-                      {t('ticket_detail.articles_title')}
-                    </h6>
-                    {ticket.suggestions.articles.map((a) => (
-                      <div key={a.id} className="p-2 mb-2 rounded"
-                        style={{ background: 'rgba(59,130,246,0.06)', cursor: 'pointer' }}
-                        onClick={() => navigate(`/knowledge/${a.id}`)}>
-                        <strong className="small">{a.title}</strong>
-                        <p className="small text-muted mb-0">{a.summary}</p>
-                      </div>
-                    ))}
+                  <div className="mb-4">
+                    <div className="text-muted small text-uppercase fw-semibold mb-3"
+                      style={{ letterSpacing: '0.06em' }}>
+                      Articles de la base de connaissances
+                    </div>
+                    <div className="d-flex flex-column gap-2">
+                      {ticket.suggestions.articles.map((a) => (
+                        <div
+                          key={a.id}
+                          onClick={() => navigate(`/knowledge/${a.id}`)}
+                          style={{
+                            padding: '14px 16px',
+                            borderRadius: 10,
+                            border: '1px solid var(--cui-border-color)',
+                            background: 'var(--cui-tertiary-bg)',
+                            cursor: 'pointer',
+                            transition: 'border-color 0.15s, background 0.15s',
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: 12,
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = '#2563eb'
+                            e.currentTarget.style.background = 'rgba(37,99,235,0.04)'
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = 'var(--cui-border-color)'
+                            e.currentTarget.style.background = 'var(--cui-tertiary-bg)'
+                          }}
+                        >
+                          {/* Icône catégorie */}
+                          <div style={{
+                            width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+                            background: 'rgba(37,99,235,0.12)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            <CIcon icon={cilBook} style={{ color: '#2563eb' }} />
+                          </div>
+
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div className="d-flex align-items-center gap-2 mb-1">
+                              <span className="fw-semibold small">{a.title}</span>
+                              <CBadge color="primary" style={{ fontSize: 10 }}>{a.category}</CBadge>
+                            </div>
+                            <div className="text-muted small" style={{
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                            }}>
+                              {a.summary}
+                            </div>
+                          </div>
+
+                          <CIcon icon={cilArrowRight} size="sm"
+                            style={{ color: 'var(--cui-secondary-color)', flexShrink: 0, marginTop: 2 }} />
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
+                {/* Tickets similaires résolus */}
                 {ticket.suggestions.similarTickets?.length > 0 && (
                   <div>
-                    <h6 className="text-muted small text-uppercase mb-2">
-                      {t('ticket_detail.similar_tickets_title')}
-                    </h6>
-                    {ticket.suggestions.similarTickets.map((st) => (
-                      <div key={st.id} className="p-2 mb-2 rounded"
-                        style={{ background: 'rgba(39,174,96,0.06)', cursor: 'pointer' }}
-                        onClick={() => navigate(`/tickets/${st.id}`)}>
-                        <strong className="small">#{st.id} — {st.title}</strong>
-                        {st.last_internal_note && (
-                          <p className="small text-muted mb-0 mt-1">
-                            {t('ticket_detail.solution')}{' '}
-                            {st.last_internal_note.substring(0, 120)}
-                            {st.last_internal_note.length > 120 ? '...' : ''}
-                          </p>
-                        )}
-                        <small className="text-muted">
-                          {t('ticket_detail.resolved_by', {
-                            name: st.resolved_by_name || '—',
-                            date: st.resolved_at
-                              ? new Date(st.resolved_at).toLocaleDateString(
-                                  t('common.locale', { defaultValue: 'fr-FR' })
-                                )
-                              : '',
-                          })}
-                        </small>
-                      </div>
-                    ))}
+                    <div className="text-muted small text-uppercase fw-semibold mb-3"
+                      style={{ letterSpacing: '0.06em' }}>
+                      Tickets similaires résolus
+                    </div>
+                    <div className="d-flex flex-column gap-2">
+                      {ticket.suggestions.similarTickets.map((st) => (
+                        <div
+                          key={st.id}
+                          onClick={() => navigate(`/tickets/${st.id}`)}
+                          style={{
+                            padding: '14px 16px',
+                            borderRadius: 10,
+                            border: '1px solid var(--cui-border-color)',
+                            background: 'var(--cui-tertiary-bg)',
+                            cursor: 'pointer',
+                            transition: 'border-color 0.15s, background 0.15s',
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: 12,
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = '#22c55e'
+                            e.currentTarget.style.background = 'rgba(34,197,94,0.04)'
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = 'var(--cui-border-color)'
+                            e.currentTarget.style.background = 'var(--cui-tertiary-bg)'
+                          }}
+                        >
+                          {/* Icône ticket résolu */}
+                          <div style={{
+                            width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+                            background: 'rgba(34,197,94,0.12)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            <CIcon icon={cilCheckCircle} style={{ color: '#22c55e' }} />
+                          </div>
+
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div className="fw-semibold small mb-1">
+                              #{st.id} — {st.title}
+                            </div>
+
+                            {/* Note de résolution si disponible */}
+                            {st.last_internal_note && (
+                              <div className="small mb-1" style={{
+                                color: 'var(--cui-body-color)',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                              }}>
+                                <span className="text-muted">Solution : </span>
+                                {st.last_internal_note}
+                              </div>
+                            )}
+
+                            <div className="text-muted small">
+                              Résolu par {st.resolved_by_name || '—'}{' '}
+                              {st.resolved_at
+                                ? `le ${new Date(st.resolved_at).toLocaleDateString('fr-FR')}`
+                                : ''}
+                            </div>
+                          </div>
+
+                          <CIcon icon={cilArrowRight} size="sm"
+                            style={{ color: 'var(--cui-secondary-color)', flexShrink: 0, marginTop: 2 }} />
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
+
               </CCardBody>
             </CCard>
           )}

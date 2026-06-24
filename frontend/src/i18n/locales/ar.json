@@ -85,7 +85,14 @@
     "video_kb_title": "قاعدة المعرفة",
     "video_kb_desc": "الاطلاع على التوثيق التقني المشترك والمساهمة فيه.",
     "video_notif_title": "الإشعارات والتنبيهات",
-    "video_notif_desc": "ضبط تنبيهات مستويات الخدمة وإشعارات التذاكر."
+    "video_notif_desc": "ضبط تنبيهات مستويات الخدمة وإشعارات التذاكر.",
+    "stats_modules": "وحدات وظيفية",
+    "feature_chatbot_title": "المساعد الذكي الافتراضي",
+    "feature_chatbot_desc": "روبوت محادثة بلغة طبيعية، إنشاء تلقائي للتذاكر، بحث في قاعدة المعرفة — مستضاف محلياً.",
+    "feature_kb_title": "قاعدة المعرفة",
+    "feature_kb_desc": "مقالات تقنية، أسئلة شائعة، إجراءات داخلية — متاحة لجميع الأدوار وقابلة للاستعلام من المساعد الذكي.",
+    "feature_notif_title": "الإشعارات والتنبيهات",
+    "feature_notif_desc": "تنبيهات بريد إلكتروني وإشعارات نظام لكل حدث متعلق بالتذاكر أو مستويات الخدمة أو المعدات."
   },
   "login": {
     "title": "تسجيل الدخول",
@@ -242,6 +249,7 @@
     "reset": "إعادة تعيين",
     "view": "عرض",
     "results_count": "{{count}} نتيجة",
+    "or": "أو",
     "all": "الكل",
     "saving": "جاري الحفظ...",
     "locale": "ar-SA"
@@ -311,7 +319,37 @@
     "form_password_edit_placeholder": "اتركه فارغاً لعدم التغيير",
     "form_saving": "جاري الحفظ...",
     "form_save_changes": "حفظ التغييرات",
-    "form_create_btn": "إنشاء مستخدم"
+    "form_create_btn": "إنشاء مستخدم",
+    "import_users": {
+      "title": "استيراد المستخدمين",
+      "subtitle": "استيراد قائمة المستخدمين من ملف Excel",
+      "format_title": "تنسيق ملف Excel المتوقع",
+      "format_desc": "يجب أن يحتوي الملف على الأعمدة التالية (بأي ترتيب، غير حساس لحالة الأحرف):",
+      "roles_accepted": "الأدوار المقبولة:",
+      "roles_default": "الافتراضي إذا كان فارغاً",
+      "password_generated": "سيتم إنشاء كلمة مرور آمنة وإرسالها عبر البريد الإلكتروني.",
+      "drag_drop": "اسحب وأفلت ملف Excel هنا",
+      "or_click": "أو انقر للتحديد",
+      "file_types": ".xlsx, .xls — 5 ميجابايت كحد أقصى",
+      "created_label": "حساب(ات) منشأة",
+      "skipped_label": "تم تجاهله(ها) — بريد إلكتروني موجود",
+      "errors_label": "خطأ(أخطاء)",
+      "created_title": "الحسابات المنشأة ({{count}})",
+      "emails_sent": "— تم إرسال بيانات الدخول عبر البريد الإلكتروني",
+      "view_users": "عرض قائمة المستخدمين",
+      "new_import": "استيراد جديد",
+      "invalid_format": "تنسيق غير صالح. استخدم ملف .xlsx أو .xls.",
+      "import_error": "خطأ أثناء الاستيراد.",
+      "importing": "جارٍ الاستيراد...",
+      "launch_import": "بدء الاستيراد",
+      "table": {
+        "row": "صف",
+        "identifier": "المعرف",
+        "email": "البريد الإلكتروني",
+        "role": "الدور",
+        "reason": "السبب"
+      }
+    }
   },
   "tickets": {
     "list": {
@@ -901,6 +939,46 @@
   },
   "knowledge_meta": {
     "default_author": "خدمة IT"
+  },
+  "home_kpi": {
+    "panel_title": "لوحة التحكم في الوقت الفعلي",
+    "tickets_active": "التذاكر — الحالات النشطة",
+    "sla_title": "الامتثال لاتفاقية مستوى الخدمة",
+    "sla_badge": "FB-05 متوافق",
+    "sla_critical": "حرج",
+    "sla_high": "عالية",
+    "sla_normal": "عادية",
+    "sla_low": "منخفضة",
+    "parc_title": "الحظيرة المعلوماتية",
+    "parc_inservice": "قيد الخدمة",
+    "parc_broken": "معطل",
+    "parc_stock": "في المخزون",
+    "ia_title": "المساعد الذكي",
+    "ia_auto_resolve": "حل تلقائي",
+    "ia_created": "تذاكر منشأة بالذكاء الاصطناعي",
+    "ia_escalated": "تصعيد تقني",
+    "check_auto_assign": "توزيع تلقائي حسب الحمل",
+    "check_sla_alerts": "اتفاقية مستوى الخدمة وتنبيهات التجاوز",
+    "check_internal_notes": "ملاحظات داخلية للتقنيين",
+    "check_audit_logs": "سجلات تدقيق غير قابلة للتغيير",
+    "status_new": "جديد",
+    "status_in_progress": "قيد التقدم",
+    "status_resolved": "تم الحل",
+    "status_closed": "مغلق"
+  },
+  "home_hero": {
+    "chatbot_resolution": "حل تلقائي عبر المساعد الذكي (هدف OS-06)",
+    "first_response_time": "متوسط وقت الاستجابة الأولى"
+  },
+  "home_stats": {
+    "modules": "وحدات وظيفية",
+    "sla_critical_resolution": "حل التذاكر الحرجة (اتفاقية مستوى الخدمة)",
+    "concurrent_users": "مستخدمون متزامنون مدعومون",
+    "target_availability": "التوافر المستهدف (محلي)"
+  },
+  "home_footer": {
+    "brand": "منصة DRESI ITSM",
+    "copyright": "© 2026 · support@itsm-ministere.gov.ma · DRESI — قسم الشبكات والأنظمة"
   },
   "relation_labels": {
     "uses_printer": "طابعة",

@@ -94,7 +94,7 @@ const TicketForm = () => {
       showToast(t('tickets.form.create_success'), 'success')
       setTimeout(() => navigate('/tickets'), 1000)
     } catch (err) {
-      showToast(err.response?.data?.message || t('common.generic_error'))
+      showToast(err.message || t('common.generic_error'))
     } finally {
       setSaving(false)
     }

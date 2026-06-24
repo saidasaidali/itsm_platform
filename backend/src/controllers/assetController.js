@@ -48,9 +48,16 @@ export async function getAssets(req, res) {
     if (type)   { params.push(type);   where += ` AND a.type = $${params.length}`; }
 
     const { rows } = await pool.query(
-      `SELECT a.*, u.username AS assigned_to_name
+      `SELECT a.*, u.username AS assigned_to_name,
+              rs.risk_score, rs.risk_level
        FROM assets a
        LEFT JOIN users u ON a.assigned_to = u.id
+       LEFT JOIN LATERAL (
+         SELECT risk_score, risk_level FROM asset_risk_scores
+         WHERE asset_id = a.id
+         ORDER BY computed_at DESC
+         LIMIT 1
+       ) rs ON TRUE
        ${where}
        ORDER BY a.created_at DESC`,
       params

@@ -20,6 +20,9 @@ import {
   cilWarning,
   cilBell,
   cilPlus,
+  cilSpeedometer,
+  cilDiamond,
+  cilBolt,
 } from '@coreui/icons'
 import { useTranslation } from 'react-i18next'
 
@@ -108,6 +111,9 @@ const Dashboard = () => {
     ],
   }
   const actions = quickActions[role] || []
+
+  const ml = realtime?.ml
+  const riskStats = ml?.riskStats
 
   if (initialLoading) {
     return (
@@ -218,6 +224,107 @@ const Dashboard = () => {
               </CCard>
             </CCol>
           </CRow>
+
+          {/* ════ ML Risk Scores Section ════ */}
+          {riskStats && (
+            <>
+              <h5 className="mb-2">
+                <CIcon icon={cilSpeedometer} size="sm" className="me-2" />
+                ML Risk Scores — Intelligence Prédictive
+              </h5>
+              <CRow className="g-4 mb-4">
+                <CCol xs={6} md={3} xl={3}>
+                  <CCard className="p-3 h-100 text-center">
+                    <div className="text-uppercase text-secondary small mb-2">Score Moyen</div>
+                    <div className="fs-2 fw-semibold" style={{ color: riskStats.avg_risk_score >= 50 ? '#ef4444' : '#22c55e' }}>
+                      {riskStats.avg_risk_score ?? '—'}
+                    </div>
+                    <div className="text-muted small">/100 (sur {riskStats.total_scored} équipements)</div>
+                  </CCard>
+                </CCol>
+                <CCol xs={6} md={3} xl={3}>
+                  <CCard className="p-3 h-100 text-center" style={{ cursor: 'pointer' }} onClick={() => navigate('/assets')}>
+                    <div className="text-uppercase text-secondary small mb-2">Risque Critique</div>
+                    <div className="fs-2 fw-semibold text-danger">{riskStats.critical_count}</div>
+                    <div className="text-muted small">assets</div>
+                  </CCard>
+                </CCol>
+                <CCol xs={6} md={3} xl={3}>
+                  <CCard className="p-3 h-100 text-center" style={{ cursor: 'pointer' }} onClick={() => navigate('/assets')}>
+                    <div className="text-uppercase text-secondary small mb-2">Risque Élevé</div>
+                    <div className="fs-2 fw-semibold text-warning">{riskStats.high_count}</div>
+                    <div className="text-muted small">assets</div>
+                  </CCard>
+                </CCol>
+                <CCol xs={6} md={3} xl={3}>
+                  <CCard className="p-3 h-100 text-center">
+                    <div className="text-uppercase text-secondary small mb-2">Faible / Modéré</div>
+                    <div className="fs-2 fw-semibold text-success">{riskStats.low_count + riskStats.medium_count}</div>
+                    <div className="text-muted small">assets</div>
+                  </CCard>
+                </CCol>
+              </CRow>
+            </>
+          )}
+
+          {/* Top Risky Assets */}
+          {ml?.topRiskyAssets?.length > 0 && (
+            <CCard className="mb-4">
+              <CCardHeader>
+                <CIcon icon={cilDiamond} size="sm" className="me-2" />
+                Top 5 Assets les Plus Risqués (ML)
+              </CCardHeader>
+              <CCardBody className="p-0">
+                {ml.topRiskyAssets.map((asset, idx) => (
+                  <div key={asset.id}
+                    className="d-flex justify-content-between align-items-center px-3 py-2 border-bottom"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => navigate(`/assets/${asset.id}`)}
+                  >
+                    <div>
+                      <span className="me-2 text-muted">#{idx + 1}</span>
+                      <span className="fw-semibold">{asset.asset_tag}</span>
+                      <span className="text-muted ms-2 small">{asset.type} — {asset.brand} {asset.model}</span>
+                    </div>
+                    <CBadge color={
+                      asset.risk_level === 'critique' ? 'danger' :
+                      asset.risk_level === 'élevé' ? 'warning' :
+                      asset.risk_level === 'modéré' ? 'info' : 'success'
+                    }>
+                      {asset.risk_score}/100 — {asset.risk_level}
+                    </CBadge>
+                  </div>
+                ))}
+              </CCardBody>
+            </CCard>
+          )}
+
+          {/* Failure Predictions */}
+          {ml?.failurePredictions?.length > 0 && (
+            <CCard className="mb-4">
+              <CCardHeader>
+                <CIcon icon={cilBolt} size="sm" className="me-2" />
+                Prédictions de Pannes — Intervention préventive recommandée
+              </CCardHeader>
+              <CCardBody className="p-0">
+                {ml.failurePredictions.map((asset) => (
+                  <div key={asset.id}
+                    className="d-flex justify-content-between align-items-center px-3 py-2 border-bottom"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => navigate(`/assets/${asset.id}`)}
+                  >
+                    <div>
+                      <span className="fw-semibold">{asset.asset_tag}</span>
+                      <span className="text-muted ms-2 small">{asset.type}</span>
+                    </div>
+                    <CBadge color={asset.risk_level === 'critique' ? 'danger' : 'warning'}>
+                      {asset.risk_score}/100
+                    </CBadge>
+                  </div>
+                ))}
+              </CCardBody>
+            </CCard>
+          )}
 
           <CRow className="g-4 mb-4">
             <CCol xs={12} md={6}>

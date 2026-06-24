@@ -85,7 +85,14 @@
     "video_kb_title": "Knowledge base",
     "video_kb_desc": "Consult and contribute to shared documentation.",
     "video_notif_title": "Notifications & alerts",
-    "video_notif_desc": "Configure SLA alerts and ticket notifications."
+    "video_notif_desc": "Configure SLA alerts and ticket notifications.",
+    "stats_modules": "functional modules",
+    "feature_chatbot_title": "AI Virtual Assistant",
+    "feature_chatbot_desc": "Natural language chatbot, automatic ticket creation, knowledge base search — hosted on-premise.",
+    "feature_kb_title": "Knowledge Base",
+    "feature_kb_desc": "Technical articles, FAQs, internal procedures — accessible to all roles and searchable by the chatbot.",
+    "feature_notif_title": "Notifications & alerts",
+    "feature_notif_desc": "Email alerts and system notifications for every ticket, SLA, or asset event."
   },
   "login": {
     "title": "Login",
@@ -242,6 +249,7 @@
     "reset": "Reset",
     "view": "View",
     "results_count": "{{count}} result(s)",
+    "or": "or",
     "all": "All",
     "saving": "Saving...",
     "locale": "en-US"
@@ -311,7 +319,37 @@
     "form_password_edit_placeholder": "Leave blank to keep current",
     "form_saving": "Saving...",
     "form_save_changes": "Save changes",
-    "form_create_btn": "Create user"
+    "form_create_btn": "Create user",
+    "import_users": {
+      "title": "Import Users",
+      "subtitle": "Import a list of users from an Excel file",
+      "format_title": "Expected Excel file format",
+      "format_desc": "The file must contain the following columns (in any order, case-insensitive):",
+      "roles_accepted": "Accepted roles:",
+      "roles_default": "default if empty",
+      "password_generated": "A secure password will be generated and sent by email.",
+      "drag_drop": "Drag and drop your Excel file here",
+      "or_click": "or click to select",
+      "file_types": ".xlsx, .xls — 5 MB maximum",
+      "created_label": "Account(s) created",
+      "skipped_label": "Skipped — existing email",
+      "errors_label": "Error(s)",
+      "created_title": "Created accounts ({{count}})",
+      "emails_sent": "— Credentials sent by email",
+      "view_users": "View user list",
+      "new_import": "New import",
+      "invalid_format": "Invalid format. Use an .xlsx or .xls file.",
+      "import_error": "Error during import.",
+      "importing": "Importing...",
+      "launch_import": "Start import",
+      "table": {
+        "row": "Row",
+        "identifier": "Identifier",
+        "email": "Email",
+        "role": "Role",
+        "reason": "Reason"
+      }
+    }
   },
   "tickets": {
     "list": {
@@ -901,6 +939,46 @@
   },
   "knowledge_meta": {
     "default_author": "IT Service"
+  },
+  "home_kpi": {
+    "panel_title": "Real-time dashboard",
+    "tickets_active": "Tickets — active statuses",
+    "sla_title": "SLA compliance",
+    "sla_badge": "FB-05 compliant",
+    "sla_critical": "Critical",
+    "sla_high": "High",
+    "sla_normal": "Normal",
+    "sla_low": "Low",
+    "parc_title": "IT Assets",
+    "parc_inservice": "In service",
+    "parc_broken": "Broken",
+    "parc_stock": "In stock",
+    "ia_title": "AI Assistant",
+    "ia_auto_resolve": "Auto resolution",
+    "ia_created": "IA created tickets",
+    "ia_escalated": "Tech escalations",
+    "check_auto_assign": "Automatic workload assignment",
+    "check_sla_alerts": "SLA & breach alerts",
+    "check_internal_notes": "Internal technician notes",
+    "check_audit_logs": "Immutable audit logs",
+    "status_new": "New",
+    "status_in_progress": "In Progress",
+    "status_resolved": "Resolved",
+    "status_closed": "Closed"
+  },
+  "home_hero": {
+    "chatbot_resolution": "automatic chatbot resolution (target OS-06)",
+    "first_response_time": "average first response time"
+  },
+  "home_stats": {
+    "modules": "functional modules",
+    "sla_critical_resolution": "critical ticket resolution (SLA)",
+    "concurrent_users": "supported concurrent users",
+    "target_availability": "target availability (on-premise)"
+  },
+  "home_footer": {
+    "brand": "DRESI ITSM Platform",
+    "copyright": "© 2026 · support@itsm-ministere.gov.ma · DRESI — Networks and Systems Department"
   },
   "relation_labels": {
     "uses_printer": "Printer",

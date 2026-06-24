@@ -60,7 +60,7 @@ export const createTicket = async (ticket) => {
   })
   return {
     ...data.data,
-    suggestions: data.suggestions || null,  // ← suggestions disponibles dès la création
+    suggestions: data.data.suggestions || null,  // ← suggestions disponibles dès la création
   }
 }
 

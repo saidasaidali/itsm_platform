@@ -11,6 +11,7 @@ import {
 
 import { runADScan } from '../services/networkDiscovery/adScan.js';
 import { runSNMPScan } from '../services/networkDiscovery/snmpScan.js';
+import { getAssetMLPrediction } from '../controllers/assetController.js';
 
 const router = Router();
 
@@ -42,6 +43,9 @@ router.delete('/:id',authenticate, authorize('Admin'), deleteAsset);
 
 // ── Affectation dédiée ──
 router.patch('/:id/assign', authenticate, authorize('Admin'), assignAsset);
+
+// ── ML Prediction ──
+router.get('/:id/ml-prediction', authenticate, authorize('Admin', 'Technicien'), getAssetMLPrediction);
 
 
 

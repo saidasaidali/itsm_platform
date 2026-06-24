@@ -92,6 +92,14 @@ function buildHtml(title, body, actionUrl = null, actionLabel = null) {
 // ── Envoi NON BLOQUANT (fire and forget) ─────────────────────
 function sendMail(to, subject, html) {
   const s = getSettings();
+  console.log('[EmailService] sendMail appelé:', {
+    to,
+    subject,
+    from: s.smtp_from || s.smtp_user,
+    smtp_user: s.smtp_user,
+    smtp_from: s.smtp_from,
+  });
+  
   if (!s.smtp_user) {
     console.log(`[EmailService] Email ignoré (SMTP non configuré) → ${to}`);
     return;
@@ -100,6 +108,13 @@ function sendMail(to, subject, html) {
   transporter.sendMail({
     from: s.smtp_from || s.smtp_user,
     to, subject, html,
+  }).then((info) => {
+    console.log('[EmailService] Email envoyé avec succès:', {
+      to,
+      subject,
+      messageId: info.messageId,
+      response: info.response,
+    });
   }).catch((err) => {
     console.error('[EmailService] Erreur envoi (non bloquant) :', err.message);
   });

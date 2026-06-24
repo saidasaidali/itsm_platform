@@ -202,21 +202,23 @@ export async function detectMissingDevices(daysThreshold = 3) {
 }
 
 
-export async function detectMLAnomalies(assetId) {
-  const prediction = await getFullPrediction(assetId);
-  if (!prediction?.anomaly?.is_anomaly) return;
+export async function detectMLAnomalies(assetId, anomalyScore, riskScore, failureProba) {
+  if (!anomalyScore) {
+    const prediction = await getFullPrediction(assetId);
+    if (!prediction?.anomaly?.is_anomaly) return;
+    anomalyScore = prediction.anomaly.anomaly_score;
+    riskScore = prediction.risk.score;
+    failureProba = prediction.failure.failure_probability;
+  }
 
-  await raiseAnomaly({
-    asset_id:     assetId,
-    anomaly_type: 'ml_anomaly',
-    severity:     prediction.anomaly.anomaly_score >= 70 ? 'high' : 'medium',
-    description:  `Anomalie détectée par le modèle ML (Isolation Forest)`,
-    details:      {
-      anomaly_score:   prediction.anomaly.anomaly_score,
-      risk_score:      prediction.risk.score,
-      failure_proba:   prediction.failure.failure_probability,
-    },
-  });
+  const severity = anomalyScore >= 70 ? 'high' : 'medium';
+
+  await raiseAnomaly(
+    assetId,
+    'ml_anomaly',
+    `Anomalie détectée par le modèle ML (Isolation Forest) — score: ${anomalyScore}/100`,
+    { anomaly_score: anomalyScore, risk_score: riskScore, failure_proba: failureProba }
+  );
 }
 export default {
   detectUserMismatch,

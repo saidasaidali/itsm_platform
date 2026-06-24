@@ -18,6 +18,7 @@ import { getAssetById, assignAsset } from '../../services/assetService'
 import { getUsers } from '../../services/userService'
 import { getTicketsByAsset } from '../../services/ticketService'
 import { getAssetTwin } from '../../services/smartCmdbService'
+import api from '../../services/api'
 
 const STATUS_COLORS = {
   'En service':    'success',
@@ -116,6 +117,87 @@ const AssetDetail = () => {
     }
   }, [assetId])
 
+ // ── Composant Risk Score ──────────────────────────────────────────────────────
+const RiskScoreWidget = ({ assetId }) => {
+  const [prediction, setPrediction] = useState(null)
+  const [loading, setLoading]       = useState(true)
+
+  useEffect(() => {
+    api.get(`/api/assets/${assetId}/ml-prediction`)
+      .then((data) => setPrediction(data.prediction))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [assetId])
+
+  if (loading) return <div className="text-center p-3"><CSpinner size="sm" /></div>
+  if (!prediction) return (
+    <div className="text-muted small p-2">
+      Score ML non disponible (service en attente d'entraînement).
+    </div>
+  )
+
+  const score = prediction.risk.score
+  const level = prediction.risk.level
+
+  const COLOR = {
+    critique: '#ef4444',
+    élevé:    '#f97316',
+    modéré:   '#f59e0b',
+    faible:   '#22c55e',
+  }
+  const color = COLOR[level] || '#6b7280'
+
+  return (
+    <div>
+      {/* Jauge circulaire simple */}
+      <div className="d-flex align-items-center gap-3 mb-3">
+        <div style={{
+          width: 72, height: 72, borderRadius: '50%',
+          background: `conic-gradient(${color} ${score * 3.6}deg, var(--cui-border-color) 0deg)`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          position: 'relative',
+        }}>
+          <div style={{
+            width: 52, height: 52, borderRadius: '50%',
+            background: 'var(--cui-body-bg)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontWeight: 700, fontSize: 16, color,
+          }}>
+            {Math.round(score)}
+          </div>
+        </div>
+        <div>
+          <div className="fw-semibold" style={{ color }}>
+            Risque {level}
+          </div>
+          <div className="text-muted small">Score ML : {score}/100</div>
+        </div>
+      </div>
+
+      {/* Prédiction de panne */}
+      {prediction.failure.failure_predicted && (
+        <div className="p-2 rounded mb-2"
+          style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)' }}>
+          <div className="small fw-semibold text-danger">Panne probable dans 30 jours</div>
+          <div className="small text-muted">
+            Probabilité : {prediction.failure.failure_probability}%
+          </div>
+        </div>
+      )}
+
+      {/* Anomalie ML */}
+      {prediction.anomaly.is_anomaly && (
+        <div className="p-2 rounded"
+          style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)' }}>
+          <div className="small fw-semibold text-warning">Comportement anormal détecté</div>
+          <div className="small text-muted">
+            Score d'anomalie : {prediction.anomaly.anomaly_score}/100
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
   // ── Chargement initial ────────────────────────────────────────
   useEffect(() => {
     fetchAsset()
@@ -145,7 +227,7 @@ const AssetDetail = () => {
       setAssignModal(false)
       fetchAsset()
     } catch (e) {
-      showToast(e.response?.data?.message || t('asset_detail.error'))
+      showToast(e.message || t('asset_detail.error'))
     }
   }
 
@@ -155,7 +237,7 @@ const AssetDetail = () => {
       showToast(t('asset_detail.unassign_success'), 'success')
       fetchAsset()
     } catch (e) {
-      showToast(e.response?.data?.message || t('asset_detail.error'))
+      showToast(e.message || t('asset_detail.error'))
     }
   }
 

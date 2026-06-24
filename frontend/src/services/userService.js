@@ -86,3 +86,22 @@ export const getActiveTechnicians = async () => {
   const data = await api.get('/api/users/technicians')
   return data.data
 }
+
+export const importUsersFromExcel = async (file) => {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const token = localStorage.getItem('itsm-auth-token')
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+
+  const response = await fetch(`${API_URL}/api/users/import`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+    // Ne pas mettre Content-Type ici — le navigateur le gère automatiquement
+    // avec la boundary multipart correcte
+  })
+  const data = await response.json()
+  if (!response.ok) throw new Error(data.message || 'Erreur lors de l\'import.')
+  return data
+}

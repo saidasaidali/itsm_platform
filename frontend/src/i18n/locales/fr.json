@@ -85,7 +85,14 @@
     "video_kb_title": "Base de connaissance",
     "video_kb_desc": "Consulter et contribuer à la documentation technique partagée.",
     "video_notif_title": "Notifications & alertes",
-    "video_notif_desc": "Configurer les alertes SLA et les notifications de ticket."
+    "video_notif_desc": "Configurer les alertes SLA et les notifications de ticket.",
+    "stats_modules": "modules fonctionnels",
+    "feature_chatbot_title": "Assistant virtuel IA",
+    "feature_chatbot_desc": "Chatbot en langage naturel, création automatique de tickets, recherche dans la base de connaissances — hébergé localement.",
+    "feature_kb_title": "Base de connaissances",
+    "feature_kb_desc": "Articles techniques, FAQ, procédures internes — accessibles à tous les rôles et interrogeables par le chatbot.",
+    "feature_notif_title": "Notifications & alertes",
+    "feature_notif_desc": "Alertes email et notifications système pour chaque événement ticket, SLA ou équipement."
   },
   "login": {
     "title": "Connexion",
@@ -242,6 +249,7 @@
     "reset": "Réinitialiser",
     "view": "Voir",
     "results_count": "{{count}} résultat(s)",
+    "or": "ou",
     "all": "Tous",
     "saving": "Enregistrement...",
     "locale": "fr-FR"
@@ -311,7 +319,37 @@
     "form_password_edit_placeholder": "Laisser vide pour ne pas modifier",
     "form_saving": "Enregistrement...",
     "form_save_changes": "Enregistrer les modifications",
-    "form_create_btn": "Créer l'utilisateur"
+    "form_create_btn": "Créer l'utilisateur",
+    "import_users": {
+      "title": "Import d'utilisateurs",
+      "subtitle": "Importez une liste d'utilisateurs depuis un fichier Excel",
+      "format_title": "Format attendu du fichier Excel",
+      "format_desc": "Le fichier doit contenir les colonnes suivantes (dans n'importe quel ordre, insensible à la casse) :",
+      "roles_accepted": "Rôles acceptés :",
+      "roles_default": "défaut si vide",
+      "password_generated": "Un mot de passe sécurisé sera généré et envoyé par email.",
+      "drag_drop": "Glissez-déposez votre fichier Excel ici",
+      "or_click": "ou cliquez pour sélectionner",
+      "file_types": ".xlsx, .xls — 5 Mo maximum",
+      "created_label": "Compte(s) créé(s)",
+      "skipped_label": "Ignoré(s) — email existant",
+      "errors_label": "Erreur(s)",
+      "created_title": "Comptes créés ({{count}})",
+      "emails_sent": "— Identifiants envoyés par email",
+      "view_users": "Voir la liste des utilisateurs",
+      "new_import": "Nouvel import",
+      "invalid_format": "Format invalide. Utilisez un fichier .xlsx ou .xls.",
+      "import_error": "Erreur lors de l'import.",
+      "importing": "Import en cours...",
+      "launch_import": "Lancer l'import",
+      "table": {
+        "row": "Ligne",
+        "identifier": "Identifiant",
+        "email": "Email",
+        "role": "Rôle",
+        "reason": "Raison"
+      }
+    }
   },
   "tickets": {
     "list": {
@@ -903,6 +941,46 @@
   },
   "knowledge_meta": {
     "default_author": "Service IT"
+  },
+  "home_kpi": {
+    "panel_title": "Tableau de bord en temps réel",
+    "tickets_active": "Tickets — statuts actifs",
+    "sla_title": "Respect des SLA",
+    "sla_badge": "FB-05 conforme",
+    "sla_critical": "Critique",
+    "sla_high": "Haute",
+    "sla_normal": "Normale",
+    "sla_low": "Basse",
+    "parc_title": "Parc informatique",
+    "parc_inservice": "En service",
+    "parc_broken": "En panne",
+    "parc_stock": "En stock",
+    "ia_title": "Assistant IA",
+    "ia_auto_resolve": "Résolution auto",
+    "ia_created": "Tickets créés IA",
+    "ia_escalated": "Escalades tech.",
+    "check_auto_assign": "Assignation automatique par charge",
+    "check_sla_alerts": "SLA & alertes de dépassement",
+    "check_internal_notes": "Notes internes techniciens",
+    "check_audit_logs": "Logs d'audit immuables",
+    "status_new": "Nouveaux",
+    "status_in_progress": "En cours",
+    "status_resolved": "Résolus",
+    "status_closed": "Clôturés"
+  },
+  "home_hero": {
+    "chatbot_resolution": "résolution automatique chatbot (objectif OS-06)",
+    "first_response_time": "temps moyen de première réponse"
+  },
+  "home_stats": {
+    "modules": "modules fonctionnels",
+    "sla_critical_resolution": "résolution tickets critiques (SLA)",
+    "concurrent_users": "utilisateurs simultanés supportés",
+    "target_availability": "disponibilité cible (on-premise)"
+  },
+  "home_footer": {
+    "brand": "DRESI ITSM Platform",
+    "copyright": "© 2026 · support@itsm-ministere.gov.ma · DRESI — Service Réseaux et Systèmes"
   },
   "relation_labels": {
     "uses_printer": "Imprimante",

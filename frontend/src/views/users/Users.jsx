@@ -217,9 +217,15 @@ const Users = () => {
           <CCard className="mb-4">
             <CCardHeader className="d-flex justify-content-between align-items-center">
               <span>{t('users.list_title')}</span>
-              <CButton color="primary" onClick={() => navigate('/users/new')}>
-                {t('users.add_user')}
-              </CButton>
+              <div className="d-flex gap-2">
+                <CButton color="success" variant="outline"
+                  onClick={() => navigate('/users/import')}>
+                  Importer depuis Excel
+                </CButton>
+                <CButton color="primary" onClick={() => navigate('/users/new')}>
+                   {t('users.add_user')}
+                </CButton>
+              </div>
             </CCardHeader>
             <CCardBody>
               {loading ? (

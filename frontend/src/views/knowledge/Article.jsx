@@ -42,7 +42,7 @@ const Article = () => {
       await deleteArticle(articleId)
       navigate('/knowledge')
     } catch (e) {
-      setError(e.response?.data?.message || t('article.delete_error'))
+      setError(e.message || t('article.delete_error'))
     }
   }
 

@@ -26,6 +26,7 @@ import CIcon from '@coreui/icons-react'
 import { cilSearch } from '@coreui/icons'
 import { getAssets, getWarrantyAlerts } from '../../services/assetService'
 import { getReliabilityAlerts } from '../../services/ticketService'
+import api from '../../services/api'
 
 const STATUS_COLORS = {
   'En service': 'success',
@@ -206,6 +207,7 @@ const Assets = () => {
                   <CTableHeaderCell>{t('assets.fields.assigned_to')}</CTableHeaderCell>
                   <CTableHeaderCell>{t('assets.fields.department')}</CTableHeaderCell>
                   <CTableHeaderCell>{t('assets.fields.warranty')}</CTableHeaderCell>
+                  <CTableHeaderCell>Risque ML</CTableHeaderCell>
                   <CTableHeaderCell></CTableHeaderCell>
                 </CTableRow>
               </CTableHead>
@@ -247,6 +249,19 @@ const Assets = () => {
                           </span>
                         ) : (
                           '-'
+                        )}
+                      </CTableDataCell>
+                      <CTableDataCell>
+                        {asset.risk_score != null ? (
+                          <CBadge color={
+                            asset.risk_level === 'critique' ? 'danger' :
+                            asset.risk_level === 'élevé' ? 'warning' :
+                            asset.risk_level === 'modéré' ? 'info' : 'success'
+                          }>
+                            {Math.round(asset.risk_score)}
+                          </CBadge>
+                        ) : (
+                          <span className="text-muted">—</span>
                         )}
                       </CTableDataCell>
                       <CTableDataCell onClick={(event) => event.stopPropagation()}>

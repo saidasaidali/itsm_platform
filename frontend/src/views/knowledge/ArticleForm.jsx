@@ -106,7 +106,7 @@ const ArticleForm = () => {
       }
       setTimeout(() => navigate('/knowledge'), 1000)
     } catch (err) {
-      showToast(err.response?.data?.message || t('knowledge.form.save_error'))
+      showToast(err.message || t('knowledge.form.save_error'))
     } finally {
       setSaving(false)
     }
