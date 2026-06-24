@@ -4,6 +4,8 @@ import pool from '../db.js';
 import emailService from '../services/emailService.js';
 import suggestionEngine from '../services/autoTicketing/suggestionEngine.js';
 import { t } from '../utils/i18n.js';
+import chatbotBrain from '../services/chatbot/chatbotBrain.js';
+import workflowEngine, { WORKFLOW_TYPES } from '../services/workflowEngine.js';
 
 // ─── Historique ───────────────────────────────────────────────────────────────
 async function addHistory(ticketId, userId, action, oldValue = null, newValue = null) {
@@ -259,6 +261,9 @@ export async function createTicket(req, res) {
       title, description, category, ticket.id
     );
 
+    // ── Déclenchement des workflows automatiques ──────────────
+    await workflowEngine.triggerWorkflows(WORKFLOW_TYPES.TICKET_CREATED, ticket, userId);
+
     return res.status(201).json({
       success: true,
       message: t(req, 'ticket_created'),
@@ -305,6 +310,7 @@ export async function updateStatus(req, res) {
        WHERE id = $3`,
       [newStatus, resolvedAt, id]
     );
+    const updatedTicket = { ...ticket, status: newStatus };
     await addHistory(id, userId, 'status_change', ticket.status, newStatus);
 
     // userId passé comme actorId — le technicien/admin qui change le statut
@@ -312,6 +318,10 @@ export async function updateStatus(req, res) {
     await emailService.notifyStatusChange(
       ticket, newStatus, req.user.username, ticket.created_by, userId
     );
+    if (newStatus === 'Résolu') {
+      await chatbotBrain.learnFromTicket(id);
+      await workflowEngine.triggerWorkflows(WORKFLOW_TYPES.TICKET_RESOLVED, updatedTicket, userId);
+    }
     if (newStatus === 'Clôturé') {
       await emailService.notifyClosed(ticket, ticket.created_by, req.user.username, userId);
     }
