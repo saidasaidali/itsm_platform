@@ -424,6 +424,34 @@ export function sendMailDirect(to, url, html, subject) {
   sendMail(to, subject, html);
 }
 
+
+export async function sendWelcomeEmail(email, fullName, username, tempPassword) {
+  const loginUrl = `${getFrontendUrl()}/#/login`;
+  sendMail(
+    email,
+    '[ITSM] Votre compte a été créé — Plateforme DRESI',
+    buildHtml(
+      'Bienvenue sur la plateforme DRESI ITSM',
+      `<p>Bonjour <strong>${fullName}</strong>,</p>
+       <p>Votre compte a été créé sur la plateforme ITSM du ministère.</p>
+       <table style="width:100%;border-collapse:collapse;margin:16px 0">
+         <tr>
+           <td style="padding:8px 0;color:#666;width:40%">Identifiant</td>
+           <td><strong>${username}</strong></td>
+         </tr>
+         <tr>
+           <td style="padding:8px 0;color:#666">Mot de passe temporaire</td>
+           <td><strong style="font-size:16px;letter-spacing:2px">${tempPassword}</strong></td>
+         </tr>
+       </table>
+       <p style="color:#e74c3c;font-size:13px">
+         Veuillez modifier votre mot de passe dès votre première connexion
+         depuis Paramètres → Compte.
+       </p>`,
+      loginUrl, 'Se connecter'
+    )
+  );
+}
 export default {
   notifyTicketCreated,
   notifyStatusChange,
@@ -435,4 +463,5 @@ export default {
   sendTempPasswordEmail,
   notifyRemoteSession,
   sendMailDirect,
+  sendWelcomeEmail,
 };

@@ -47,13 +47,23 @@ router.patch('/:id/assign', authenticate, authorize('Admin'), assignAsset);
 
 // Déclenchement manuel depuis l'interface (Admin uniquement)
 router.post('/scan/ad', authenticate, authorize('Admin'), async (req, res) => {
-  const result = await runADScan();
-  res.json({ success: true, data: result });
+  try {
+    const result = await runADScan();
+    res.json({ success: true, data: result });
+  } catch (err) {
+    console.error('[scan/ad]', err);
+    res.status(500).json({ success: false, message: 'Erreur lors du scan AD.' });
+  }
 });
 
 router.post('/scan/snmp', authenticate, authorize('Admin'), async (req, res) => {
-  const { baseIp, start, end } = req.body;
-  const result = await runSNMPScan(baseIp || process.env.SNMP_NETWORK_BASE, start || 1, end || 254);
-  res.json({ success: true, data: result });
+  try {
+    const { baseIp, start, end } = req.body;
+    const result = await runSNMPScan(baseIp || process.env.SNMP_NETWORK_BASE, start || 1, end || 254);
+    res.json({ success: true, data: result });
+  } catch (err) {
+    console.error('[scan/snmp]', err);
+    res.status(500).json({ success: false, message: 'Erreur lors du scan SNMP.' });
+  }
 });
 export default router;

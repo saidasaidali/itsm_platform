@@ -3,6 +3,8 @@ import { validationResult } from 'express-validator';
 import pool from '../db.js';
 import { t } from '../utils/i18n.js';
 import { isUsernameTaken, isEmailTaken, isValidRole, findUserById, hashPassword } from '../services/authService.js';
+import crypto from 'crypto';
+import * as XLSX from 'xlsx';
 
 // ─── GET /api/users (Admin) ───────────────────────────────────────────────────
 export async function getUsers(req, res) {
@@ -185,5 +187,166 @@ export async function getActiveTechnicians(req, res) {
   } catch (err) {
     console.error('[getActiveTechnicians]', err.message);
     return res.status(500).json({ success: false, message: t(req, 'server_error') });
+  }
+}
+
+
+
+// ─── POST /api/users/import — Import Excel (Admin) ────────────────────────────
+export async function importUsersFromExcel(req, res) {
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: 'Fichier Excel manquant.' });
+  }
+
+  try {
+    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+    const sheet    = workbook.Sheets[workbook.SheetNames[0]];
+    const rows     = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+    if (rows.length === 0) {
+      return res.status(400).json({ success: false, message: 'Le fichier est vide.' });
+    }
+
+    // Normalisation des noms de colonnes (insensible à la casse et aux espaces)
+    const normalize = (str) => str?.toString().toLowerCase().trim()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    const ROLE_MAP = {
+      'admin':      1,
+      'technicien': 2,
+      'agent':      3,
+    };
+
+    const results = {
+      created:  [],
+      skipped:  [],
+      errors:   [],
+    };
+
+    for (const [i, row] of rows.entries()) {
+      // Trouver les colonnes en ignorant la casse
+      const keys     = Object.keys(row);
+      const findCol  = (...names) => keys.find((k) => names.includes(normalize(k)));
+
+      const nomCol    = findCol('nom', 'name', 'last_name', 'lastname');
+      const prenomCol = findCol('prenom', 'prénom', 'first_name', 'firstname');
+      const emailCol  = findCol('email', 'e-mail', 'mail', 'courriel');
+      const roleCol   = findCol('role', 'rôle', 'profil', 'type');
+
+      const nom    = row[nomCol]?.toString().trim();
+      const prenom = row[prenomCol]?.toString().trim();
+      const email  = row[emailCol]?.toString().trim().toLowerCase();
+      const roleTxt = normalize(row[roleCol]?.toString());
+
+      // Validation basique
+      if (!email || !nom) {
+        results.errors.push({
+          ligne: i + 2,
+          email: email || '—',
+          raison: 'Nom ou email manquant.',
+        });
+        continue;
+      }
+
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        results.errors.push({ ligne: i + 2, email, raison: 'Format email invalide.' });
+        continue;
+      }
+
+      const roleId = ROLE_MAP[roleTxt] || 3; // Agent par défaut si rôle inconnu
+
+      // Vérifier si l'email existe déjà
+      const { rows: existing } = await pool.query(
+        'SELECT id FROM users WHERE email = $1', [email]
+      );
+      if (existing[0]) {
+        results.skipped.push({ ligne: i + 2, email, raison: 'Email déjà utilisé.' });
+        continue;
+      }
+
+      // Générer un mot de passe aléatoire respectant les règles de validation
+      const tempPassword = generateSecurePassword();
+      const hashed       = await hashPassword(tempPassword);
+      const username     = buildUsername(prenom, nom);
+
+      // Vérifier unicité du username
+      const finalUsername = await ensureUniqueUsername(username);
+
+      // Créer l'utilisateur avec status 'active' (import admin = compte validé)
+      const { rows: created } = await pool.query(
+        `INSERT INTO users (username, email, password, role_id, status)
+         VALUES ($1, $2, $3, $4, 'active')
+         RETURNING id, username, email`,
+        [finalUsername, email, hashed, roleId]
+      );
+
+      // Envoyer l'email avec les identifiants
+      await emailService.sendWelcomeEmail(
+        email,
+        `${prenom} ${nom}`,
+        finalUsername,
+        tempPassword
+      );
+
+      results.created.push({
+        ligne:    i + 2,
+        username: finalUsername,
+        email,
+        role:     Object.keys(ROLE_MAP).find((k) => ROLE_MAP[k] === roleId) || 'agent',
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: `Import terminé : ${results.created.length} créé(s), ${results.skipped.length} ignoré(s), ${results.errors.length} erreur(s).`,
+      results,
+    });
+  } catch (err) {
+    console.error('[importUsersFromExcel]', err.message);
+    return res.status(500).json({ success: false, message: 'Erreur lors du traitement du fichier.' });
+  }
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function generateSecurePassword() {
+  const upper   = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const lower   = 'abcdefghjkmnpqrstuvwxyz';
+  const digits  = '23456789';
+  const special = '@#$%&*!';
+  const all     = upper + lower + digits + special;
+
+  // Garantir au moins un de chaque type requis
+  let pwd = [
+    upper[Math.floor(Math.random() * upper.length)],
+    lower[Math.floor(Math.random() * lower.length)],
+    digits[Math.floor(Math.random() * digits.length)],
+    special[Math.floor(Math.random() * special.length)],
+  ];
+
+  // Compléter jusqu'à 10 caractères
+  for (let i = pwd.length; i < 10; i++) {
+    pwd.push(all[Math.floor(Math.random() * all.length)]);
+  }
+
+  // Mélanger
+  return pwd.sort(() => Math.random() - 0.5).join('');
+}
+
+function buildUsername(prenom, nom) {
+  const clean = (s) => s?.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '') || '';
+  return `${clean(prenom)}.${clean(nom)}`.slice(0, 30);
+}
+
+async function ensureUniqueUsername(base) {
+  let username = base;
+  let counter  = 1;
+  while (true) {
+    const { rows } = await pool.query(
+      'SELECT id FROM users WHERE username = $1', [username]
+    );
+    if (!rows[0]) return username;
+    username = `${base}${counter++}`;
   }
 }

@@ -10,9 +10,8 @@ import ticketRoutes from './routes/ticketRoutes.js';
 import assetRoutes from './routes/assetRoutes.js';
 import knowledgeRoutes from './routes/knowledgeRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
-import './services/ticketMonitor.js'; 
-import './services/slaMonitor.js';
 import './services/ticketMonitor.js';
+import './services/slaMonitor.js';
 
 import { startNetworkDiscovery } from './services/networkDiscovery/scheduler.js';
 import anomalyRoutes from './routes/anomalyRoutes.js';
@@ -22,8 +21,9 @@ import dashboardRoutes from './routes/dashboardRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import { loadSettings } from './services/settingsService.js';
 import chatbotRoutes from './routes/chatbotRoutes.js';
-import languageMiddleware from './middlewares/languageMiddleware.js'
-import { t } from './utils/i18n.js'
+import suggestionRoutes from './routes/suggestionRoutes.js';
+import languageMiddleware from './middlewares/languageMiddleware.js';
+import { t } from './utils/i18n.js';
 dotenv.config();
 
 const app = express();
@@ -38,7 +38,7 @@ app.use(cors({
 
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: false }));
-app.use(languageMiddleware)
+app.use(languageMiddleware);
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);

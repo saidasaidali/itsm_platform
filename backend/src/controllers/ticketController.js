@@ -296,13 +296,14 @@ export async function updateStatus(req, res) {
     if (role === 'Technicien' && ticket.assigned_to !== userId)
       return res.status(403).json({ success: false, message: t(req, 'not_assigned_to_ticket') });
 
+    const resolvedAt = newStatus === 'Résolu' ? new Date() : null;
     await pool.query(
       `UPDATE tickets
        SET status = $1,
-           resolved_at = ${newStatus === 'Résolu' ? 'NOW()' : 'resolved_at'},
+           resolved_at = $2,
            updated_at = NOW()
-       WHERE id = $2`,
-      [newStatus, id]
+       WHERE id = $3`,
+      [newStatus, resolvedAt, id]
     );
     await addHistory(id, userId, 'status_change', ticket.status, newStatus);
 

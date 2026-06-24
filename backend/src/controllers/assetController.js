@@ -3,6 +3,8 @@ import { validationResult } from 'express-validator';
 import pool from '../db.js';
 import { t } from '../utils/i18n.js';
 import anomalyDetector from '../services/networkDiscovery/anomalyDetector.js';
+import { getFullPrediction } from '../services/mlService.js';
+
 
 // ─── Utilitaire historique ────────────────────────────────────
 async function addHistory(assetId, userId, actionType, action, oldValue = null, newValue = null) {
@@ -544,5 +546,25 @@ export async function heartbeat(req, res) {
   } catch (err) {
     console.error('[heartbeat]', err.message);
     return res.status(500).json({ success: false, message: t(req, 'server_error') });
+  }
+}
+
+
+// GET /api/assets/:id/ml-prediction
+export async function getAssetMLPrediction(req, res) {
+  const { id } = req.params;
+  try {
+    const prediction = await getFullPrediction(id);
+    if (!prediction) {
+      return res.json({
+        success: true,
+        prediction: null,
+        message: 'Service ML non disponible ou données insuffisantes.',
+      });
+    }
+    return res.json({ success: true, prediction });
+  } catch (err) {
+    console.error('[getAssetMLPrediction]', err.message);
+    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
   }
 }

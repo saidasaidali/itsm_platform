@@ -2,6 +2,7 @@
 // Crée automatiquement des tickets quand une anomalie système est détectée
 import pool from '../../db.js';
 import emailService from '../emailService.js';
+import { getFullPrediction, saveRiskScore } from '../mlService.js';
 
 const COOLDOWN_HOURS = 24; // Ne pas re-créer un ticket pour le même problème avant 24h
 
@@ -132,36 +133,50 @@ export async function checkMissingComputers(daysThreshold = 3) {
 }
 
 // 2. Disque plein (espace libre critique)
-export async function checkDiskSpace(thresholdGB = 5) {
-  const { rows } = await pool.query(
-    `SELECT a.id, a.asset_tag, l.disk_free_gb, l.disk_total_gb
-     FROM assets a
-     JOIN asset_live_state l ON l.asset_id = a.id
-     WHERE l.is_online = TRUE
-       AND l.disk_free_gb IS NOT NULL
-       AND l.disk_free_gb < $1`,
-    [thresholdGB]
+
+// ── Règle ML : risk score élevé → ticket préventif ────────────────────────────
+async function checkMLRiskScores() {
+  const { rows: assets } = await pool.query(
+    `SELECT id, asset_tag, type FROM assets
+     WHERE type IN ('Ordinateur', 'Serveur', 'Imprimante')
+       AND status = 'En service'`
   );
 
-  let created = 0;
-  for (const asset of rows) {
-    const pctFree = asset.disk_total_gb
-      ? Math.round((asset.disk_free_gb / asset.disk_total_gb) * 100)
-      : null;
-    const ticket = await createAutoTicket({
-      assetId:     asset.id,
-      title:       `Espace disque critique sur "${asset.asset_tag}"`,
-      description: `Seulement ${asset.disk_free_gb} GB d'espace libre restant` +
-                   (pctFree !== null ? ` (${pctFree}% du disque)` : '') +
-                   `. Un nettoyage ou une extension de stockage est nécessaire pour éviter ` +
-                   `un ralentissement ou un blocage du système.`,
-      category:    'Matériel',
-      priority:    asset.disk_free_gb < 2 ? 'Haute' : 'Moyenne',
-      triggerType: 'disk_full',
-    });
-    if (ticket) created++;
+  for (const asset of assets) {
+    const prediction = await getFullPrediction(asset.id);
+    if (!prediction) continue;
+
+    const { risk, failure } = prediction;
+
+    // Sauvegarder le score en base
+    await saveRiskScore(asset.id, risk.score, risk.level);
+
+    // Ticket préventif si risque critique ET panne prédite
+    if (risk.score >= 75 && failure.failure_predicted) {
+      await createAutoTicket({
+        title:        `[ML] Risque critique détecté — ${asset.asset_tag}`,
+        description:  `Le modèle ML prédit un risque de panne pour ${asset.asset_tag}.\n` +
+                      `Score de risque : ${risk.score}/100 (${risk.level}).\n` +
+                      `Probabilité de panne : ${failure.failure_probability}%.`,
+        priority:     'Haute',
+        category:     'Matériel',
+        asset_id:     asset.id,
+        trigger_type: 'ml_high_risk',
+      });
+    }
+    // Ticket préventif si risque élevé seulement
+    else if (risk.score >= 50) {
+      await createAutoTicket({
+        title:        `[ML] Risque élevé — ${asset.asset_tag}`,
+        description:  `Score de risque ML : ${risk.score}/100 (${risk.level}).\n` +
+                      `Une intervention préventive est recommandée.`,
+        priority:     'Moyenne',
+        category:     'Matériel',
+        asset_id:     asset.id,
+        trigger_type: 'ml_elevated_risk',
+      });
+    }
   }
-  return created;
 }
 
 // 3. Imprimante hors ligne
@@ -211,7 +226,7 @@ export async function runAutoTicketingChecks() {
 
 export default {
   checkMissingComputers,
-  checkDiskSpace,
+  checkMLRiskScores,
   checkPrinterOffline,
   runAutoTicketingChecks,
 };

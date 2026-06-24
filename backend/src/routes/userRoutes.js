@@ -1,10 +1,11 @@
 // backend/src/routes/userRoutes.js
 import { Router } from 'express';
 import { body } from 'express-validator';
+import multer from 'multer';
 import {
   getUsers, getUserById, createUser, updateUser,
   deleteUser, updateUserStatus, updateOwnProfile,
-  getActiveTechnicians,
+  getActiveTechnicians, importUsersFromExcel,
 } from '../controllers/userController.js';
 import { authenticate } from '../middlewares/authMiddleware.js';
 import { authorize } from '../middlewares/roleMiddleware.js';
@@ -12,6 +13,24 @@ import { adminResetPassword } from '../controllers/authController.js';
 
 const router = Router();
 
+// ─── Multer — une seule déclaration avec toutes les options ───────────────────
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 Mo max
+  fileFilter: (req, file, cb) => {
+    const allowed = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel',
+    ];
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Format invalide. Utilisez un fichier .xlsx ou .xls.'));
+    }
+  },
+});
+
+// ─── Validations ──────────────────────────────────────────────────────────────
 const createValidation = [
   body('username').notEmpty().withMessage('Nom d\'utilisateur obligatoire.').isLength({ min: 3 }).trim(),
   body('email').notEmpty().isEmail().withMessage('Format email invalide.').normalizeEmail(),
@@ -54,22 +73,24 @@ const statusValidation = [
 
 // ─── Routes statiques — TOUTES avant les routes /:id ─────────────────────────
 
-// Profil — accessible à tous les utilisateurs connectés
+// Profil — accessible à tous les rôles connectés
 router.patch('/me', authenticate, profileValidation, updateOwnProfile);
 
-// Techniciens actifs — Admin et Technicien peuvent consulter cette liste
-// DOIT être avant GET /:id pour qu'Express ne confonde pas "technicians" avec un ID
+// Techniciens actifs — avant /:id
 router.get('/technicians', authenticate, authorize('Admin', 'Technicien'), getActiveTechnicians);
 
+// Import Excel — avant /:id
+router.post('/import', authenticate, authorize('Admin'), upload.single('file'), importUsersFromExcel);
+
 // ─── Routes Admin générales ───────────────────────────────────────────────────
-router.get('/',    authenticate, authorize('Admin'), getUsers);
-router.post('/',   authenticate, authorize('Admin'), createValidation, createUser);
+router.get('/',  authenticate, authorize('Admin'), getUsers);
+router.post('/', authenticate, authorize('Admin'), createValidation, createUser);
 
 // ─── Routes Admin avec paramètre :id — APRÈS toutes les routes statiques ──────
-router.get('/:id',              authenticate, authorize('Admin'), getUserById);
-router.put('/:id',              authenticate, authorize('Admin'), updateValidation, updateUser);
-router.patch('/:id/status',     authenticate, authorize('Admin'), statusValidation, updateUserStatus);
-router.delete('/:id',           authenticate, authorize('Admin'), deleteUser);
+router.get('/:id',                  authenticate, authorize('Admin'), getUserById);
+router.put('/:id',                  authenticate, authorize('Admin'), updateValidation, updateUser);
+router.patch('/:id/status',         authenticate, authorize('Admin'), statusValidation, updateUserStatus);
+router.delete('/:id',               authenticate, authorize('Admin'), deleteUser);
 router.patch('/:id/reset-password', authenticate, authorize('Admin'), adminResetPassword);
 
 export default router;

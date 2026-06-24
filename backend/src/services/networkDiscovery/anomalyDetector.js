@@ -1,6 +1,7 @@
 // backend/src/services/networkDiscovery/anomalyDetector.js
 // Moteur centralisé de détection d'anomalies sur les équipements réseau
 import pool from '../../db.js';
+import { getFullPrediction } from '../mlService.js';
 
 const SEVERITY = {
   user_mismatch:   'high',
@@ -200,6 +201,23 @@ export async function detectMissingDevices(daysThreshold = 3) {
   return missing.length;
 }
 
+
+export async function detectMLAnomalies(assetId) {
+  const prediction = await getFullPrediction(assetId);
+  if (!prediction?.anomaly?.is_anomaly) return;
+
+  await raiseAnomaly({
+    asset_id:     assetId,
+    anomaly_type: 'ml_anomaly',
+    severity:     prediction.anomaly.anomaly_score >= 70 ? 'high' : 'medium',
+    description:  `Anomalie détectée par le modèle ML (Isolation Forest)`,
+    details:      {
+      anomaly_score:   prediction.anomaly.anomaly_score,
+      risk_score:      prediction.risk.score,
+      failure_proba:   prediction.failure.failure_probability,
+    },
+  });
+}
 export default {
   detectUserMismatch,
   detectUnknownDevice,
@@ -208,4 +226,5 @@ export default {
   detectNeverSeen,
   detectReappeared,
   detectMissingDevices,
+  detectMLAnomalies,
 };

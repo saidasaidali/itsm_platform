@@ -7,6 +7,7 @@ import { authorize } from '../middlewares/roleMiddleware.js';
 import {
   forgotPassword, checkResetToken, resetPassword,
 } from '../controllers/authController.js';
+import { getAssetMLPrediction } from '../controllers/assetController.js';
 
 
 
@@ -55,4 +56,5 @@ router.post('/forgot-password',          forgotPassword);
 router.get('/reset-password/:token',     checkResetToken);
 router.post('/reset-password/:token',    resetPassword);
 
+router.get('/:id/ml-prediction', authenticate, authorize('Admin', 'Technicien'), getAssetMLPrediction);
 export default router;
