@@ -1,65 +1,65 @@
-// backend/src/controllers/chatbotController.js
-import { searchKnowledgeForChat } from '../services/autoTicketing/suggestionEngine.js';
-import { t } from '../utils/i18n.js';
+import chatbotBrain from '../services/chatbot/chatbotBrain.js';
+import pool from '../db.js';
 
-function buildResponse(req, articles) {
-  if (articles.length === 0) {
-    return {
-      answer: t(req, 'chatbot_no_results'),
-      sources: [],
-    };
-  }
-
-  const best = articles[0];
-
-  const sentences = best.content
-    .replace(/#+\s*/g, '')
-    .split(/\n+/)
-    .map((s) => s.trim())
-    .filter((s) => s.length > 20)
-    .slice(0, 4)
-    .join(' ');
-
-  const answer = sentences || best.summary;
-
-  return {
-    answer,
-    sources: articles.map((a) => ({
-      id: a.id,
-      title: a.title,
-      summary: a.summary,
-      category: a.category,
-      relevance: parseFloat(a.relevance).toFixed(3),
-    })),
-  };
-}
-
-export async function askChatbot(req, res) {
-  const { message } = req.body;
-
-  if (!message || !message.trim()) {
-    return res.status(400).json({ success: false, message: t(req, 'chatbot_empty_message') });
-  }
-
-  if (message.trim().length < 5) {
-    return res.status(400).json({
-      success: false,
-      message: t(req, 'chatbot_too_short'),
-    });
-  }
-
+export const askChatbot = async (req, res) => {
   try {
-    const articles = await searchKnowledgeForChat(message.trim(), 3);
-    const { answer, sources } = buildResponse(req, articles);
-
-    return res.json({
-      success: true,
-      answer,
-      sources,
-      hasResults: sources.length > 0,
-    });
-  } catch (err) {
-    console.error('[chatbot]', err.message);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
+    const { message, session_key } = req.body;
+    const userId = req.user?.id;
+    const sessionKey = session_key || `session-${Date.now()}`;
+    const response = await chatbotBrain.processMessage(sessionKey, userId, message);
+    res.json(response);
+  } catch (error) {
+    console.error('[Chatbot] Erreur askChatbot:', error);
+    res.status(500).json({ success: false, message: 'Erreur interne' });
   }
-}
+};
+
+export const sendMessage = async (req, res) => {
+  try {
+    const { session_key, message } = req.body;
+    const userId = req.user?.id;
+    const response = await chatbotBrain.processMessage(session_key, userId, message);
+    res.json({ success: true, data: response });
+  } catch (error) {
+    console.error('[Chatbot] Erreur sendMessage:', error);
+    res.status(500).json({ success: false, message: 'Erreur interne' });
+  }
+};
+
+export const syncAll = async (req, res) => {
+  try {
+    const result = await chatbotBrain.syncAll();
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('[Chatbot] Erreur syncAll:', error);
+    res.status(500).json({ success: false, message: 'Erreur interne' });
+  }
+};
+
+export const getTopCases = async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM chatbot_top_cases LIMIT 10');
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('[Chatbot] Erreur getTopCases:', error);
+    res.status(500).json({ success: false, message: 'Erreur interne' });
+  }
+};
+
+export const getSessionHistory = async (req, res) => {
+  try {
+    const { session_key } = req.params;
+    const sessionResult = await pool.query('SELECT id FROM chatbot_sessions WHERE session_key = $1', [session_key]);
+    if (sessionResult.rows.length === 0) {
+      return res.json({ success: true, data: [] });
+    }
+    const messagesResult = await pool.query(
+      'SELECT * FROM chatbot_messages WHERE session_id = $1 ORDER BY created_at',
+      [sessionResult.rows[0].id]
+    );
+    res.json({ success: true, data: messagesResult.rows });
+  } catch (error) {
+    console.error('[Chatbot] Erreur getSessionHistory:', error);
+    res.status(500).json({ success: false, message: 'Erreur interne' });
+  }
+};
