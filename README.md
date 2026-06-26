@@ -1,846 +1,1111 @@
-# 🖥️ ITSM Platform - Système de Gestion des Tickets IT
+# DRESI ITSM Platform
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
-![Status](https://img.shields.io/badge/status-Production%20Ready-success.svg)
-
-**Plateforme ITSM (IT Service Management) complète pour la gestion des services informatiques, développée pour le ministère DRESI.**
+**Système de Gestion des Services Informatiques (ITSM)** — Plateforme complète de gestion des tickets IT, des parcs informatiques, de la découverte réseau, du chatbot IA, de l'analyse de sentiments et de la maintenance prédictive.
 
 ---
 
-## 📋 Table des Matières
+## Table des matières
 
-- [🎯 Vue d'ensemble](#-vue-densemble)
-- [✨ Fonctionnalités](#-fonctionnalités)
-- [🏗️ Architecture](#️-architecture)
-- [🛠️ Technologies](#️-technologies)
-- [📦 Installation](#-installation)
-- [🚀 Démarrage](#-démarrage)
-- [📚 Documentation](#-documentation)
-- [🧪 Tests](#-tests)
-- [📊 Statistiques](#-statistiques)
-- [🤝 Contribution](#-contribution)
-- [📄 Licence](#-licence)
-
----
-
-## 🎯 Vue d'ensemble
-
-L'ITSM Platform est une solution complète de gestion des services informatiques qui permet de :
-
-- **Gérer les tickets** de support technique (création, assignation, suivi, résolution)
-- **Gérer les assets** informatiques (inventaire, affectation, maintenance)
-- **Automatiser** la détection d'anomalies et la création de tickets
-- **Notifier** les utilisateurs en temps réel (email + notifications internes)
-- **Assister** les utilisateurs via un chatbot intelligent avec reconnaissance vocale
-- **Analyser** les données avec des modèles ML (prédiction de pannes, détection d'anomalies)
-- **Partager** la connaissance via une base de connaissances
-- **Surveiller** le réseau et les équipements
+1. [Présentation du projet](#1-présentation-du-projet)
+2. [Architecture du projet](#2-architecture-du-projet)
+3. [Prérequis](#3-prérequis)
+4. [Installation](#4-installation)
+5. [Installation des outils externes](#5-installation-des-outils-externes)
+6. [Téléchargement des ressources externes](#6-téléchargement-des-ressources-externes)
+7. [Configuration de la base de données](#7-configuration-de-la-base-de-données)
+8. [Lancement du projet](#8-lancement-du-projet)
+9. [Tests et vérifications](#9-tests-et-vérifications)
+10. [Dépannage](#10-dépannage)
+11. [Guide de contribution](#11-guide-de-contribution)
 
 ---
 
-## ✨ Fonctionnalités
+## 1. Présentation du projet
 
-### 🎫 Gestion des Tickets
-- ✅ Création et suivi de tickets
-- ✅ Assignation automatique aux techniciens
-- ✅ Système de commentaires (publics/privés)
-- ✅ Gestion des priorités et catégories
-- ✅ Transfert de tickets entre techniciens
-- ✅ Suivi des SLA (Service Level Agreement)
-- ✅ Historique complet des modifications
-- ✅ Statistiques et rapports
+### Objectif
 
-### 🖥️ Gestion des Assets
-- ✅ Inventaire complet des équipements
-- ✅ Scan automatique du réseau (SNMP)
-- ✅ Détection d'anomalies (MAC change, IP change, user mismatch)
-- ✅ Affectation aux utilisateurs
-- ✅ Suivi de la garantie
-- ✅ Import/Export Excel
-- ✅ Génération de QR codes
-- ✅ Heartbeat agent pour Windows
+La plateforme **DRESI ITSM** est un système de gestion des services informatiques (ITSM) conçu pour les administrations et entreprises. Elle permet de :
 
-### 🤖 Auto-Ticketing Intelligent
-- ✅ Détection automatique de pannes
-- ✅ Création automatique de tickets
-- ✅ Règles configurables :
-  - PC non détecté depuis X jours
-  - Espace disque critique
-  - Imprimante hors ligne
-  - Score de risque ML élevé
-- ✅ Système de cooldown (pas de doublons)
-- ✅ Assignation automatique au technicien le moins chargé
+- Gérer les **tickets d'incidents et demandes** de support IT
+- Administrer le **parc informatique** (inventaire des équipements, affectations, QR codes)
+- Découvrir automatiquement les **équipements réseau** via SNMP et Active Directory
+- Créer des **tickets automatiques** basés sur des règles métier et l'IA prédictive
+- Analyser le **sentiment** des tickets et commentaires (détection des urgences, frustrations)
+- Proposer un **chatbot intelligent** avec reconnaissance vocale (Whisper) et synthèse vocale (Piper TTS)
+- Visualiser le **tableau de bord** et la **cartographie réseau** (Digital Twin)
+- Gérer la **base de connaissance** avec suggestions automatiques
+- Notifier par **email et notifications système** les événements importants
+- Gérer les **SLA** et la **clôture automatique** des tickets résolus
+- **Internationalisation** (Français, Anglais, Arabe avec support RTL)
 
-### 🔔 Notifications
-- ✅ Notifications internes en temps réel
-- ✅ Notifications email (SMTP)
-- ✅ Préférences utilisateur configurables
-- ✅ Notifications pour :
-  - Nouveau ticket
-  - Changement de statut
-  - Assignation
-  - Commentaire
-  - SLA dépassé
-  - Ticket clôturé
-  - Session à distance
+### Fonctionnalités principales
 
-### 💬 Chatbot Intelligent
-- ✅ Assistant virtuel avec IA
-- ✅ Reconnaissance vocale (Whisper)
-- ✅ Synthèse vocale (Piper TTS)
-- ✅ Base de connaissances intégrée
-- ✅ Historique des conversations
-- ✅ Support multilingue
-
-### 🧠 Intelligence Artificielle
-- ✅ Prédiction de pannes (Random Forest)
-- ✅ Détection d'anomalies (Isolation Forest)
-- ✅ Scoring de risque
-- ✅ Recommandations de maintenance préventive
-- ✅ Analyse de sentiment
-
-### 🌐 Découverte Réseau
-- ✅ Scan SNMP automatique
-- ✅ Scan Active Directory
-- ✅ Détection d'appareils inconnus
-- ✅ Cartographie réseau
-- ✅ Jumeau numérique
-- ✅ Détection de relations entre équipements
-
-### 📊 Tableau de Bord
-- ✅ Vue d'ensemble en temps réel
-- ✅ Statistiques tickets
-- ✅ Statistiques assets
-- ✅ Carte réseau interactive
-- ✅ Graphiques et métriques
-
-### 🌍 Internationalisation
-- ✅ Support multilingue (Français, English, العربية)
-- ✅ RTL (Right-to-Left) pour l'arabe
-- ✅ Thème light/dark/auto
-- ✅ Formats de date adaptés
-
-### 🔐 Sécurité
-- ✅ Authentification JWT
-- ✅ Gestion des rôles (Admin, Technicien, Agent)
-- ✅ Validation des entrées
-- ✅ Protection des routes
-- ✅ Chiffrement des mots de passe (bcrypt)
+| Fonctionnalité | Description |
+|---|---|
+| **Gestion des tickets** | Création, assignation, suivi, commentaires, historique |
+| **Gestion du parc (CMDB)** | Inventaire des actifs, affectations, scans QR |
+| **Découverte réseau** | Scan SNMP, Active Directory, détection d'anomalies |
+| **Jumeau numérique (Digital Twin)** | État en direct des équipements (CPU, RAM, disque) |
+| **Auto-ticketing** | Création automatique de tickets (PC manquant, disque plein, imprimante hors ligne, risque ML) |
+| **Machine Learning** | Prédiction de pannes, scoring de risque, détection d'anomalies (Isolation Forest, Random Forest) |
+| **Chatbot IA** | Assistant virtuel avec base de connaissance, reconnaissance vocale (Whisper) et synthèse vocale (Piper TTS) |
+| **Analyse de sentiments** | Lexique français on-premise pour détecter frustration, urgence, insatisfaction |
+| **Recommandation de techniciens** | Algorithme de scoring basé sur disponibilité, compétences, expérience |
+| **Base de connaissance** | Articles, suggestions automatiques, recherche full-text |
+| **SLA & Monitoring** | Surveillance des délais, notifications de dépassement, clôture automatique |
+| **Authentification & Rôles** | JWT, 3 rôles (Admin, Technicien, Agent), mot de passe oublié |
+| **Internationalisation** | fr, en, ar (RTL), sélecteur de langue |
+| **Notifications** | Email (SMTP) + notifications système, préférences |
+| **Import/Export** | Import Excel des actifs, utilisateurs, articles. QR codes |
 
 ---
 
-## 🏗️ Architecture
+## 2. Architecture du projet
+
+### Structure des dossiers
 
 ```
 itsm-platform/
-├── backend/                 # API REST Node.js/Express
+├── backend/                     # Serveur Node.js (Express)
+│   ├── ml/                      # Service Machine Learning (Python/FastAPI)
+│   │   ├── app.py               # API FastAPI (endpoints /predict, /train)
+│   │   ├── models/              # Modèles ML
+│   │   │   ├── risk_scorer.py   # Random Forest (score de risque)
+│   │   │   ├── failure_predictor.py  # Gradient Boosting (prédiction panne)
+│   │   │   └── anomaly_detector.py   # Isolation Forest (anomalies)
+│   │   ├── data/
+│   │   │   └── dataset_builder.py    # Construction dataset depuis PostgreSQL
+│   │   ├── trained/             # Modèles entraînés (pkl)
+│   │   └── requirements.txt     # Dépendances Python
+│   ├── models/                  # Modèles Whisper/Piper (fichiers .bin/.onnx)
+│   ├── scripts/                 # Scripts utilitaires
 │   ├── src/
-│   │   ├── controllers/     # Contrôleurs (logique métier)
-│   │   ├── routes/          # Routes API
-│   │   ├── services/        # Services (métier + utilitaires)
-│   │   ├── middlewares/     # Middlewares (auth, i18n, etc.)
-│   │   ├── db.js           # Connexion PostgreSQL
-│   │   └── app.js          # Configuration Express
-│   ├── ml/                 # Modèles Machine Learning (Python)
-│   │   ├── app.py
-│   │   ├── models/
-│   │   └── data/
-│   └── schema.sql          # Schéma de base de données
+│   │   ├── app.js               # Point d'entrée Express
+│   │   ├── db.js                # Connexion PostgreSQL (Pool)
+│   │   ├── controllers/         # Contrôleurs de l'API
+│   │   ├── routes/              # Routes Express
+│   │   ├── services/            # Services métier
+│   │   │   ├── networkDiscovery/   # Découverte réseau
+│   │   │   │   ├── scheduler.js    # Planification des scans
+│   │   │   │   ├── snmpScan.js     # Scan SNMP
+│   │   │   │   ├── adScan.js       # Scan Active Directory
+│   │   │   │   ├── digitalTwin.js  # État en direct des équipements
+│   │   │   │   ├── anomalyDetector.js  # Détection d'anomalies
+│   │   │   │   └── relationDetector.js  # Détection de relations
+│   │   │   ├── autoTicketing/     # Auto-ticketing
+│   │   │   │   ├── autoTicketEngine.js  # Moteur de création automatique
+│   │   │   │   ├── autoCloseEngine.js   # Clôture automatique
+│   │   │   │   └── suggestionEngine.js  # Suggestions (articles, tickets)
+│   │   │   ├── authService.js     # Authentification
+│   │   │   ├── emailService.js    # Service email (SMTP/Nodemailer)
+│   │   │   ├── mlService.js       # Client ML (appel HTTP vers FastAPI)
+│   │   │   ├── startMLService.js  # Lancement automatique du service ML
+│   │   │   ├── notificationService.js # Notifications système
+│   │   │   ├── piperTtsService.js # Synthèse vocale (Piper TTS)
+│   │   │   ├── whisperService.js  # Reconnaissance vocale (Whisper)
+│   │   │   ├── qrCodeService.js   # QR codes
+│   │   │   ├── qrCodeMigration.js # Migration QR codes
+│   │   │   ├── sentimentAnalyzer.js   # Analyse de sentiments (lexique)
+│   │   │   ├── technicianRecommender.js  # Recommandation technicien
+│   │   │   ├── settingsService.js  # Paramètres système
+│   │   │   ├── slaMonitor.js       # Surveillance SLA
+│   │   │   └── ticketMonitor.js    # Surveillance tickets non assignés
+│   │   └── middlewares/
+│   │       └── languageMiddleware.js   # Middleware i18n
+│   ├── schema.sql               # Schéma complet PostgreSQL
+│   ├── migration_chatbot.sql    # Migration chatbot
+│   ├── migration_sentiment.sql  # Migration analyse de sentiments
+│   ├── package.json             # Dépendances Node.js
+│   └── .env.example             # Exemple de configuration
 │
-└── frontend/               # Application React
-    └── src/
-        ├── services/       # Services API
-        ├── views/          # Pages/vues
-        ├── components/     # Composants réutilisables
-        ├── auth/           # Authentification
-        ├── i18n/           # Internationalisation
-        └── layout/         # Layout principal
+├── frontend/                    # Application React (Vite + CoreUI)
+│   ├── public/                  # Fichiers statiques
+│   ├── src/
+│   │   ├── App.jsx              # Composant racine + routing
+│   │   ├── index.jsx            # Point d'entrée
+│   │   ├── routes.js            # Configuration des routes
+│   │   ├── _nav.jsx             # Navigation / Sidebar
+│   │   ├── auth/                # Authentification
+│   │   │   └── AuthProvider.jsx # Contexte d'authentification
+│   │   ├── components/          # Composants réutilisables
+│   │   ├── layout/              # Layout principal
+│   │   ├── i18n/                # Internationalisation
+│   │   │   ├── index.js         # Configuration i18next
+│   │   │   └── locales/         # Traductions
+│   │   │       ├── fr.json
+│   │   │       ├── en.json
+│   │   │       └── ar.json
+│   │   ├── scss/                # Styles
+│   │   ├── services/            # Services API
+│   │   └── views/               # Pages
+│   │       ├── dashboard/       # Tableau de bord + carte réseau
+│   │       ├── tickets/         # Gestion des tickets
+│   │       ├── assets/          # Gestion du parc / QR codes
+│   │       ├── knowledge/       # Base de connaissance
+│   │       ├── users/           # Gestion des utilisateurs
+│   │       ├── notifications/   # Notifications
+│   │       ├── anomalies/       # Anomalies réseau
+│   │       ├── settings/        # Paramètres
+│   │       ├── chatbot/         # Widget chatbot
+│   │       └── pages/           # Login, Register, etc.
+│   ├── package.json             # Dépendances React
+│   ├── vite.config.mjs          # Configuration Vite
+│   └── .env.example             # Exemple de configuration
+│
+├── requirements.txt             # Dépendances globales (référence)
+└── README.md                    # Ce fichier
 ```
 
-### Architecture Backend
+### Technologies utilisées
 
-**Pattern :** MVC (Model-View-Controller)  
-**API :** RESTful  
-**Authentification :** JWT (JSON Web Token)  
-**Base de données :** PostgreSQL 15  
+#### Frontend
 
-**Structure :**
-```
-backend/src/
-├── controllers/          # Logique des endpoints
-│   ├── authController.js
-│   ├── ticketController.js
-│   ├── assetController.js
-│   ├── userController.js
-│   ├── notificationController.js
-│   └── settingsController.js
-├── routes/               # Définition des routes
-│   ├── authRoutes.js
-│   ├── ticketRoutes.js
-│   ├── assetRoutes.js
-│   ├── userRoutes.js
-│   ├── notificationRoutes.js
-│   └── ...
-├── services/             # Logique métier
-│   ├── emailService.js
-│   ├── authService.js
-│   ├── ticketMonitor.js
-│   ├── slaMonitor.js
-│   ├── autoTicketing/
-│   ├── networkDiscovery/
-│   └── mlService.js
-├── middlewares/          # Middlewares Express
-│   ├── authMiddleware.js
-│   ├── languageMiddleware.js
-│   └── roleMiddleware.js
-└── app.js               # Point d'entrée
-```
+| Technologie | Version | Utilisation |
+|---|---|---|
+| **React** | ^19.2.4 | Framework UI |
+| **Vite** | ^8.0.3 | Bundler / Dev server |
+| **CoreUI React** | ^5.10.0 | Template admin (tableau de bord, composants) |
+| **React Router** | ^7.13.2 | Routage |
+| **React Redux** | ^9.2.0 | Gestion d'état |
+| **i18next** | ^26.3.1 | Internationalisation (fr, en, ar) |
+| **ReactFlow** | ^11.11.4 | Cartographie réseau (Digital Twin) |
+| **Chart.js** | ^4.5.1 | Graphiques du tableau de bord |
+| **SimpleBar** | ^3.3.2 | Scrollbar personnalisée |
+| **Sass** | ^1.98.0 | Préprocesseur CSS |
 
-### Architecture Frontend
+#### Backend
 
-**Framework :** React 18  
-**State Management :** Redux + Context API  
-**Routing :** React Router (HashRouter)  
-**UI Framework :** CoreUI React  
-**HTTP Client :** Axios  
+| Technologie | Version | Utilisation |
+|---|---|---|
+| **Node.js** | ≥18 LTS | Runtime |
+| **Express** | ^5.2.1 | Framework HTTP |
+| **PostgreSQL (pg)** | ^8.21.0 | Base de données relationnelle |
+| **JSON Web Token** | ^9.0.3 | Authentification |
+| **bcrypt** | ^6.0.0 | Hachage des mots de passe |
+| **Helmet** | ^8.2.0 | Sécurité HTTP |
+| **Nodemailer** | ^9.0.0 | Envoi d'emails SMTP |
+| **Ollama** | ^0.5.12 | Client Ollama (chatbot) |
+| **net-snmp** | ^3.26.3 | Scan SNMP réseau |
+| **multer** | — | Upload de fichiers audio |
+| **pdf-parse** | ^1.1.1 | Extraction de texte PDF |
+| **mammoth** | ^1.8.0 | Conversion DOCX en texte |
+| **xlsx** | ^0.18.5 | Import/Export Excel |
 
-**Structure :**
-```
-frontend/src/
-├── services/            # Appels API
-│   ├── api.js
-│   ├── authService.js
-│   ├── ticketService.js
-│   ├── assetService.js
-│   └── ...
-├── views/               # Pages
-│   ├── tickets/
-│   ├── assets/
-│   ├── users/
-│   ├── dashboard/
-│   └── ...
-├── components/          # Composants réutilisables
-├── auth/                # Authentification
-├── i18n/                # Traductions
-└── layout/              # Layout principal
+#### Base de données
+
+| Technologie | Version |
+|---|---|
+| **PostgreSQL** | ≥15 |
+
+#### IA / Machine Learning
+
+| Technologie | Version | Utilisation |
+|---|---|---|
+| **Python** | ≥3.10 | Service ML |
+| **FastAPI** | 0.111.0 | API REST ML |
+| **Uvicorn** | 0.29.0 | Serveur ASGI |
+| **scikit-learn** | 1.4.2 | Random Forest, Gradient Boosting, Isolation Forest |
+| **pandas** | 2.2.2 | Manipulation de données |
+| **joblib** | 1.4.2 | Sauvegarde/chargement des modèles |
+| **Ollama** | — | Modèle de langage pour le chatbot |
+| **Whisper.cpp** | — | Reconnaissance vocale (transcription) |
+| **Piper TTS** | — | Synthèse vocale (text-to-speech) |
+
+#### DevOps / Outils
+
+| Outil | Utilisation |
+|---|---|
+| **Git** | Contrôle de version |
+| **Docker** | Conteneurisation (optionnel) |
+| **PowerShell** | Scripts AD, état en direct |
+
+---
+
+## 3. Prérequis
+
+### Outils et logiciels nécessaires
+
+| Outil | Version recommandée | Utilisation |
+|---|---|---|
+| **Node.js** | ≥ 18 LTS | Runtime backend |
+| **npm** | ≥ 9 | Gestionnaire de paquets |
+| **PostgreSQL** | ≥ 15 | Base de données |
+| **Python** | ≥ 3.10 | Service ML |
+| **pip** | ≥ 22 | Gestionnaire de paquets Python |
+| **Git** | ≥ 2.40 | Contrôle de version |
+| **PowerShell 7+** | ≥ 7.0 | Scripts AD et Digital Twin (Windows) |
+| **Ollama** | ≥ 0.3 | Modèle de langage local |
+| **Whisper.cpp** | — | Reconnaissance vocale |
+| **Piper TTS** | — | Synthèse vocale |
+| **ffmpeg** | — | Conversion audio (Whisper) |
+
+### Vérification des prérequis
+
+```bash
+node --version        # >= 18
+npm --version         # >= 9
+python --version      # >= 3.10
+pip --version         # >= 22
+psql --version        # >= 15
+git --version         # >= 2.40
+ffmpeg -version       # Optionnel (reconnaissance vocale)
 ```
 
 ---
 
-## 🛠️ Technologies
+## 4. Installation
 
-### Backend
-- **Runtime :** Node.js 18+
-- **Framework :** Express.js
-- **Base de données :** PostgreSQL 15
-- **ORM :** pg (node-postgres)
-- **Authentification :** JWT (jsonwebtoken)
-- **Validation :** express-validator
-- **Email :** Nodemailer
-- **ML :** scikit-learn, pandas, numpy
-- **Réseau :** net-snmp, activedirectory2
-
-### Frontend
-- **Framework :** React 18
-- **Build :** Vite
-- **UI :** CoreUI React
-- **State :** Redux Toolkit + Context API
-- **Routing :** React Router v6
-- **HTTP :** Axios
-- **i18n :** i18next
-- **Charts :** Chart.js + react-chartjs-2
-- **Excel :** xlsx (SheetJS)
-
-### DevOps
-- **Versioning :** Git
-- **Containerisation :** Docker (optionnel)
-- **ML Service :** Flask/FastAPI
-
----
-
-## 📦 Installation
-
-### Prérequis
-
-- **Node.js** >= 18.0.0
-- **PostgreSQL** >= 15.0
-- **Python** >= 3.9 (pour les modèles ML)
-- **npm** ou **yarn**
-
-### 1. Cloner le repository
+### 4.1 Cloner le projet
 
 ```bash
 git clone https://github.com/saidasaidali/itsm_platform.git
 cd itsm-platform
 ```
 
-### 2. Configuration Backend
+### 4.2 Installer les dépendances backend
 
 ```bash
 cd backend
-
-# Installer les dépendances
 npm install
-
-# Copier le fichier .env
-cp .env.example .env
-
-# Configurer les variables d'environnement
-# Éditer .env avec vos paramètres
 ```
 
-**Variables d'environnement (.env) :**
+### 4.3 Installer les dépendances frontend
+
+```bash
+cd ../frontend
+npm install
+```
+
+### 4.4 Installer les dépendances Python (ML)
+
+```bash
+cd ../backend/ml
+pip install -r requirements.txt
+```
+
+### 4.5 Configurer les variables d'environnement
+
+#### Backend
+
+```bash
+cd ../backend
+cp .env.example .env
+```
+
+Éditez le fichier `backend/.env` avec vos valeurs :
+
 ```env
-# Base de données
+# Base de Données PostgreSQL
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=itsm_platform
 DB_USER=postgres
-DB_PASSWORD=your_password
+DB_PASSWORD=votre_mot_de_passe
 
-# JWT
-JWT_SECRET=your_jwt_secret_key
+# Authentification JWT
+JWT_SECRET=une_cle_secrete_tres_longue_32_caracteres_minimum
 JWT_EXPIRES_IN=7d
 
 # Serveur
 PORT=3000
 NODE_ENV=development
 
-# Frontend URL
+# Frontend URL (pour les emails et CORS)
 FRONTEND_URL=http://localhost:3001
 
-# Email SMTP
+# SMTP (emails)
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
-SMTP_USER=your_email@gmail.com
-SMTP_PASS=your_app_password
+SMTP_USER=votre_email@gmail.com
+SMTP_PASS=votre_mot_de_passe_application
 SMTP_FROM=noreply@dresi.gov
+```
 
-# Agent heartbeat (optionnel)
-ASSET_AGENT_KEY=your_secret_key
+#### Frontend
 
-# API URL
+```bash
+cp frontend/.env.example frontend/.env
+```
+
+Éditez `frontend/.env` :
+
+```env
 VITE_API_URL=http://localhost:3000
-```
-
-### 3. Initialiser la base de données
-
-```bash
-# Créer la base de données
-createdb itsm_platform
-
-# Importer le schéma
-psql -U postgres -d itsm_platform -f schema.sql
-
-# (Optionnel) Importer les données de test
-psql -U postgres -d itsm_platform -f migration_*.sql
-```
-
-### 4. Configuration Frontend
-
-```bash
-cd frontend
-
-# Installer les dépendances
-npm install
-
-# Copier le fichier .env
-cp .env.example .env
-
-# Configurer les variables d'environnement
-```
-
-### 5. Configuration ML (Optionnel)
-
-```bash
-cd backend/ml
-
-# Créer un environnement virtuel
-python -m venv venv
-
-# Activer l'environnement
-# Windows:
-venv\Scripts\activate
-# Linux/Mac:
-source venv/bin/activate
-
-# Installer les dépendances
-pip install -r requirements.txt
+VITE_APP_NAME=ITSM Platform
+VITE_NODE_ENV=development
+VITE_DEFAULT_LANGUAGE=fr
 ```
 
 ---
 
-## 🚀 Démarrage
+## 5. Installation des outils externes
 
-### Développement
+### 5.1 PostgreSQL
 
-**Terminal 1 - Backend :**
+**À quoi ça sert ?** Base de données relationnelle pour stocker toutes les données : utilisateurs, tickets, actifs, paramètres, etc.
+
+**Installation :**
+
+```bash
+# Windows - Téléchargez l'installateur depuis https://www.postgresql.org/download/windows/
+# Linux (Ubuntu/Debian)
+sudo apt update
+sudo apt install postgresql postgresql-contrib
+```
+
+**Configuration :**
+
+```bash
+# Démarrer le service
+sudo systemctl start postgresql
+sudo systemctl enable postgresql
+
+# Créer un utilisateur
+sudo -u postgres createuser --interactive
+# Nom du rôle : postgres
+# Superutilisateur : oui
+
+# Définir un mot de passe
+sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'votre_mot_de_passe';"
+```
+
+**Vérification :**
+
+```bash
+psql -U postgres -h localhost -c "SELECT version();"
+```
+
+---
+
+### 5.2 Ollama (Chatbot IA)
+
+**À quoi ça sert ?** Plateforme de modèle de langage local pour alimenter le chatbot ITSM. Le chatbot utilise Ollama pour comprendre les requêtes des utilisateurs, rechercher dans la base de connaissance et générer des réponses contextuelles.
+
+**Installation :**
+
+```bash
+# Windows - Téléchargez depuis https://ollama.com/download
+# Linux
+curl -fsSL https://ollama.com/install.sh | sh
+```
+
+**Configuration :**
+
+```bash
+# Démarrer le service Ollama
+ollama serve
+
+# Télécharger un modèle (recommandé : Mistral pour le français)
+ollama pull mistral
+
+# Autres modèles compatibles
+# ollama pull llama3
+# ollama pull phi3
+```
+
+**Variables d'environnement (backend/.env) :**
+
+```env
+# Optionnel : définir l'URL d'Ollama si différent de localhost:11434
+# OLLAMA_HOST=http://localhost:11434
+```
+
+**Vérification :**
+
+```bash
+ollama list
+# Doit afficher le(s) modèle(s) téléchargé(s)
+```
+
+---
+
+### 5.3 Whisper.cpp (Reconnaissance vocale)
+
+**À quoi ça sert ?** Permet au chatbot de comprendre les messages vocaux des utilisateurs. Il convertit l'audio en texte en français.
+
+**Installation :**
+
+```bash
+# Windows
+# 1. Téléchargez whisper-cli.exe depuis https://github.com/ggerganov/whisper.cpp/releases
+# 2. Placez-le dans backend/models/ ou dans un dossier de votre choix
+
+# Linux/Mac
+git clone https://github.com/ggerganov/whisper.cpp.git
+cd whisper.cpp
+make
+```
+
+**Configuration (backend/.env) :**
+
+```env
+WHISPER_CPP_PATH=./models/whisper-cli.exe    # Chemin vers l'exécutable
+WHISPER_MODEL_PATH=./models/ggml-base.bin    # Chemin vers le modèle
+```
+
+**Vérification :**
+
+```bash
+# Windows
+whisper-cli.exe --help
+
+# Linux/Mac
+./whisper-cli --help
+```
+
+---
+
+### 5.4 Piper TTS (Synthèse vocale)
+
+**À quoi ça sert ?** Synthèse vocale pour que le chatbot puisse répondre oralement aux utilisateurs. Transforme le texte généré en audio.
+
+**Installation :**
+
+```bash
+# Windows
+# 1. Téléchargez piper.exe depuis https://github.com/rhasspy/piper/releases
+# 2. Placez-le dans backend/models/
+
+# Linux
+sudo apt install piper-tts
+```
+
+**Configuration (backend/.env) :**
+
+```env
+PIPER_TTS_PATH=./models/piper.exe                # Chemin vers l'exécutable
+PIPER_MODEL_PATH=./models/fr_FR-upmc-medium.onnx # Chemin vers le modèle français
+```
+
+**Vérification :**
+
+```bash
+# Windows
+piper.exe --help
+
+# Linux
+piper --help
+```
+
+---
+
+### 5.5 ffmpeg (Conversion audio)
+
+**À quoi ça sert ?** Convertit les fichiers audio (webm, ogg, mp4) en WAV 16kHz mono pour Whisper. Indispensable pour la reconnaissance vocale.
+
+**Installation :**
+
+```bash
+# Windows - Téléchargez depuis https://ffmpeg.org/download.html
+# Ajoutez le dossier bin/ à votre PATH
+
+# Linux
+sudo apt install ffmpeg
+```
+
+**Vérification :**
+
+```bash
+ffmpeg -version
+```
+
+---
+
+### 5.6 PowerShell 7+ (Windows - Découverte réseau)
+
+**À quoi ça sert ?** Exécute les scripts de découverte Active Directory et d'état en direct (Digital Twin) sur les postes Windows du réseau.
+
+**Installation :**
+
+```bash
+# Téléchargez depuis https://learn.microsoft.com/powershell/
+# winget install Microsoft.PowerShell
+```
+
+**Vérification :**
+
+```bash
+pwsh --version
+```
+
+---
+
+## 6. Téléchargement des ressources externes
+
+### 6.1 Modèles d'IA
+
+Ces modèles doivent être placés dans le dossier `backend/models/` :
+
+#### Modèle Whisper (reconnaissance vocale)
+
+| Fichier | Source | Taille |
+|---|---|---|
+| `ggml-base.bin` | [Hugging Face - Whisper.cpp](https://huggingface.co/ggerganov/whisper.cpp) | ~150 Mo |
+| `ggml-small.bin` | [Hugging Face - Whisper.cpp](https://huggingface.co/ggerganov/whisper.cpp) | ~500 Mo |
+
+```bash
+# Téléchargement (exemple avec curl)
+cd backend/models
+# Modèle base (recommandé pour commencer)
+curl -L -o ggml-base.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin
+
+# Modèle small (plus précis)
+curl -L -o ggml-small.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin
+```
+
+#### Modèle Piper TTS (synthèse vocale)
+
+| Fichier | Source | Taille |
+|---|---|---|
+| `fr_FR-upmc-medium.onnx` | [Hugging Face - Piper](https://huggingface.co/rhasspy/piper-voices) | ~40 Mo |
+| `fr_FR-upmc-medium.onnx.json` | [Hugging Face - Piper](https://huggingface.co/rhasspy/piper-voices) | ~1 Ko |
+
+```bash
+cd backend/models
+curl -L -o fr_FR-upmc-medium.onnx https://huggingface.co/rhasspy/piper-voices/resolve/main/fr/fr_FR/upmc/medium/fr_FR-upmc-medium.onnx
+curl -L -o fr_FR-upmc-medium.onnx.json https://huggingface.co/rhasspy/piper-voices/resolve/main/fr/fr_FR/upmc/medium/fr_FR-upmc-medium.onnx.json
+```
+
+#### Modèle Ollama (chatbot)
+
+```bash
+# Téléchargement via Ollama directement
+ollama pull mistral
+# ou ollama pull llama3
+```
+
+### 6.2 Arborescence des modèles
+
+```
+backend/
+├── models/
+│   ├── whisper-cli.exe          # Exécutable Whisper.cpp (Windows)
+│   ├── ggml-base.bin            # Modèle Whisper
+│   ├── ggml-small.bin           # Modèle Whisper (optionnel)
+│   ├── piper.exe                # Exécutable Piper TTS (Windows)
+│   ├── fr_FR-upmc-medium.onnx   # Modèle Piper TTS français
+│   └── fr_FR-upmc-medium.onnx.json
+```
+
+---
+
+## 7. Configuration de la base de données
+
+### 7.1 Créer la base de données
+
+```bash
+# Connexion à PostgreSQL
+psql -U postgres -h localhost
+
+# Créer la base de données
+CREATE DATABASE itsm_platform;
+
+# Ajouter l'extension pgcrypto (nécessaire pour les fonctions cryptographiques)
+\c itsm_platform
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+# Quitter
+\q
+```
+
+### 7.2 Exécuter les migrations
+
+```bash
+# Importer le schéma principal
+psql -U postgres -d itsm_platform -f backend/schema.sql
+
+# Importer les migrations supplémentaires
+psql -U postgres -d itsm_platform -f backend/migration_chatbot.sql
+psql -U postgres -d itsm_platform -f backend/migration_sentiment.sql
+```
+
+### 7.3 Insérer les données initiales
+
+Connectez-vous à la base et insérez les rôles et un administrateur par défaut :
+
+```sql
+-- Connexion
+psql -U postgres -d itsm_platform
+
+-- Insérer les rôles
+INSERT INTO roles (id, name) VALUES
+  (1, 'Admin'),
+  (2, 'Technicien'),
+  (3, 'Agent');
+
+-- Créer un administrateur par défaut (mot de passe : admin123)
+INSERT INTO users (username, email, password, role_id, status)
+VALUES (
+  'admin',
+  'admin@dresi.gov',
+  '$2b$10$VotreHashBcryptIci',  -- Générez avec bcrypt
+  1,
+  'active'
+);
+
+-- Activer les paramètres SMTP par défaut (optionnel)
+INSERT INTO system_settings (setting_key, setting_value)
+VALUES
+  ('smtp_host', 'smtp.gmail.com'),
+  ('smtp_port', '587'),
+  ('smtp_user', ''),
+  ('smtp_pass', ''),
+  ('smtp_from', 'noreply@dresi.gov');
+```
+
+**Génération du hash bcrypt :**
+
+```bash
+# Avec Node.js
+node -e "const bcrypt = require('bcrypt'); bcrypt.hash('admin123', 10).then(console.log);"
+```
+
+---
+
+## 8. Lancement du projet
+
+### 8.1 Démarrer le backend
+
 ```bash
 cd backend
+
+# Mode développement (avec auto-reload)
 npm run dev
-# Serveur disponible sur http://localhost:3000
+
+# Mode production
+npm start
 ```
 
-**Terminal 2 - Frontend :**
+Le backend démarre sur `http://localhost:3000`.
+
+**Ce qui est lancé automatiquement :**
+
+- Serveur Express (API REST)
+- Service ML Python (FastAPI) en processus enfant (port 8001)
+- Migration automatique des colonnes de sentiment
+- Migration QR Code
+- Surveillance SLA (toutes les 15 min)
+- Monitoring des tickets non assignés (toutes les 30 min)
+- Découverte réseau (planifiée)
+- Auto-ticketing (planifié)
+- Clôture automatique des tickets résolus
+
+### 8.2 Démarrer le frontend
+
 ```bash
 cd frontend
-npm run dev
-# Application disponible sur http://localhost:3001
+
+# Mode développement
+npm start
+
+# Build production
+npm run build
+
+# Preview production
+npm run serve
 ```
 
-**Terminal 3 - ML Service (Optionnel) :**
+Le frontend démarre sur `http://localhost:3001`.
+
+### 8.3 Démarrer le service ML manuellement (optionnel)
+
+Si le lancement automatique échoue, vous pouvez démarrer le service ML manuellement :
+
 ```bash
 cd backend/ml
 python app.py
-# Service ML disponible sur http://localhost:5000
 ```
 
-### Production
+Le service ML démarre sur `http://localhost:8001`.
 
-**Backend :**
-```bash
-cd backend
-npm start
-```
+### 8.4 Accéder à l'application
 
-**Frontend :**
-```bash
-cd frontend
-npm run build
-# Les fichiers statiques seront dans dist/
-```
+Ouvrez `http://localhost:3001` dans votre navigateur.
+
+- **Identifiants par défaut :** `admin` / `admin123` (si vous avez inséré les données initiales)
+- **URL de l'API :** `http://localhost:3000/api`
+- **Health check :** `http://localhost:3000/api/health`
 
 ---
 
-## 📚 Documentation
+## 9. Tests et vérifications
 
-### Rapports d'Audit
-
-Le projet a fait l'objet d'un audit complet :
-
-1. **[ROUTES_AUDIT_REPORT.md](./ROUTES_AUDIT_REPORT.md)** - Audit des routes backend
-2. **[BACKEND_AUDIT_REPORT.md](./BACKEND_AUDIT_REPORT.md)** - Audit complet du backend
-3. **[FRONTEND_AUDIT_REPORT.md](./FRONTEND_AUDIT_REPORT.md)** - Audit complet du frontend
-4. **[AUDIT_COMPLET_PROJET.md](./AUDIT_COMPLET_PROJET.md)** - Synthèse globale
-
-### Documentation Technique
-
-- **[VOICE_FEATURE.md](./VOICE_FEATURE.md)** - Documentation de la fonctionnalité vocale
-- **[BUGFIXES_SUMMARY.md](./BUGFIXES_SUMMARY.md)** - Résumé des corrections
-- **[ARCHITECTURE.md](./frontend/ARCHITECTURE.md)** - Architecture frontend
-- **[DEVELOPMENT.md](./frontend/DEVELOPMENT.md)** - Guide de développement
-
-### API Documentation
-
-L'API REST est documentée via les routes. Endpoints principaux :
-
-#### Authentification
-- `POST /api/auth/login` - Connexion
-- `POST /api/auth/register` - Inscription
-- `POST /api/auth/logout` - Déconnexion
-- `GET /api/auth/me` - Utilisateur connecté
-
-#### Tickets
-- `GET /api/tickets` - Liste des tickets
-- `GET /api/tickets/:id` - Détail d'un ticket
-- `POST /api/tickets` - Créer un ticket
-- `PATCH /api/tickets/:id/status` - Modifier le statut
-- `PATCH /api/tickets/:id/assign` - Assigner un ticket
-- `POST /api/tickets/:id/comments` - Ajouter un commentaire
-
-#### Assets
-- `GET /api/assets` - Liste des assets
-- `GET /api/assets/:id` - Détail d'un asset
-- `POST /api/assets` - Créer un asset
-- `PUT /api/assets/:id` - Modifier un asset
-- `DELETE /api/assets/:id` - Supprimer un asset
-- `POST /api/assets/import` - Import Excel
-
-#### Notifications
-- `GET /api/notifications` - Mes notifications
-- `PUT /api/notifications/:id/read` - Marquer comme lu
-- `GET /api/notifications/unread-count` - Nombre de non lus
-
-#### Users
-- `GET /api/users` - Liste des utilisateurs
-- `POST /api/users` - Créer un utilisateur
-- `PUT /api/users/:id` - Modifier un utilisateur
-- `PATCH /api/users/:id/status` - Changer le statut
-- `DELETE /api/users/:id` - Supprimer un utilisateur
-
----
-
-## 🧪 Tests
-
-### Backend
+### 9.1 Vérifier l'API backend
 
 ```bash
-cd backend
+# Health check
+curl http://localhost:3000/api/health
 
-# Tests unitaires
-npm test
-
-# Tests d'intégration
-npm run test:integration
-
-# Coverage
-npm run test:coverage
+# Réponse attendue :
+# {"status":"OK","timestamp":"2026-06-26T13:00:00.000Z"}
 ```
 
-### Frontend
+### 9.2 Vérifier le service ML
 
 ```bash
-cd frontend
+curl http://localhost:8001/health
 
-# Tests unitaires
-npm test
-
-# Tests E2E
-npm run test:e2e
-
-# Coverage
-npm run test:coverage
+# Réponse attendue :
+# {"status":"ok","service":"DRESI ML Service"}
 ```
 
----
-
-## 📊 Statistiques du Projet
-
-### Code
-- **Langages :** JavaScript, Python, SQL
-- **Lignes de code :** ~50,000+
-- **Fichiers :** 200+
-- **Controllers :** 6
-- **Services :** 20+
-- **Routes API :** 50+
-- **Composants React :** 50+
-
-### Fonctionnalités
-- **Modules :** 8 (Tickets, Assets, Users, Notifications, Chatbot, ML, Network, Knowledge)
-- **Rôles :** 3 (Admin, Technicien, Agent)
-- **Langues :** 3 (FR, EN, AR)
-- **Thèmes :** 3 (Light, Dark, Auto)
-
-### Performance
-- **Temps de réponse API :** < 200ms (avg)
-- **Scan réseau :** 254 IP en ~30s
-- **Auto-ticketing :** Vérification toutes les 15min
-- **Notifications :** Temps réel
-
----
-
-## 🏆 Points Forts
-
-### Architecture
-- ✅ Séparation claire des responsabilités
-- ✅ Architecture modulaire et scalable
-- ✅ Services centralisés et réutilisables
-- ✅ Middlewares bien organisés
-
-### Sécurité
-- ✅ Authentification JWT robuste
-- ✅ Validation systématique des entrées
-- ✅ Gestion des rôles et permissions
-- ✅ Chiffrement des mots de passe (bcrypt)
-- ✅ Protection contre les injections SQL
-
-### Fonctionnalités Avancées
-- ✅ Intelligence Artificielle intégrée
-- ✅ Automatisation intelligente
-- ✅ Détection d'anomalies réseau
-- ✅ Reconnaissance vocale
-- ✅ Multi-langue avec RTL
-
-### Qualité
-- ✅ Code propre et documenté
-- ✅ Gestion d'erreurs complète
-- ✅ Logging détaillé
-- ✅ Tests (à compléter)
-- ✅ Audit complet effectué
-
----
-
-## 📝 Configuration Avancée
-
-### SMTP (Emails)
-
-Configuration du serveur SMTP pour les notifications :
-
-```env
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your_email@gmail.com
-SMTP_PASS=your_app_password
-SMTP_FROM=noreply@dresi.gov
-```
-
-**Note :** Pour Gmail, utilisez un "Mot de passe d'application" :
-1. Activez la validation en 2 étapes
-2. Générez un mot de passe d'application
-3. Utilisez ce mot de passe dans SMTP_PASS
-
-### Scan Réseau
-
-Configuration des scans automatiques :
-
-```javascript
-// backend/src/services/networkDiscovery/scheduler.js
-const SCAN_SCHEDULES = {
-  snmp: '0 2 * * *',      // Tous les jours à 2h
-  ad: '0 3 * * *',        // Tous les jours à 3h
-  anomaly: '*/15 * * * *' // Toutes les 15min
-}
-```
-
-### Auto-Ticketing
-
-Configuration des règles :
-
-```javascript
-// backend/src/services/autoTicketing/autoTicketEngine.js
-const COOLDOWN_HOURS = 24; // Évite les doublons
-const RULES = {
-  missingPC: { days: 3, priority: 'Moyenne' },
-  diskFull: { gb: 5, priority: 'Haute' },
-  printerOffline: { hours: 2, priority: 'Moyenne' },
-  mlHighRisk: { score: 75, priority: 'Haute' }
-}
-```
-
----
-
-## 🚀 Déploiement
-
-### Docker (Recommandé)
+### 9.3 Vérifier la base de données
 
 ```bash
-# Construction des images
-docker-compose build
+psql -U postgres -d itsm_platform -c "\dt"
 
-# Démarrage
-docker-compose up -d
-
-# Vérification
-docker-compose ps
-
-# Logs
-docker-compose logs -f
+# Doit afficher toutes les tables :
+# asset_anomalies, asset_assignments, asset_history, asset_live_state,
+# asset_relations, asset_risk_scores, assets, audit_logs, auto_ticket_cooldown,
+# chatbot_learned_cases, chatbot_logs, chatbot_messages, chatbot_sessions,
+# knowledge_articles, knowledge_base, notification_preferences, notifications,
+# roles, scan_history, system_settings, ticket_comments, ticket_history,
+# tickets, unknown_devices, users
 ```
 
-### Manuel
-
-**Backend :**
-```bash
-cd backend
-npm install --production
-npm start
-```
-
-**Frontend :**
-```bash
-cd frontend
-npm install
-npm run build
-
-# Servir avec Nginx
-sudo cp -r dist/* /var/www/html/
-```
-
-**Base de données :**
-```bash
-# Backup
-pg_dump -U postgres itsm_platform > backup.sql
-
-# Restore
-psql -U postgres -d itsm_platform < backup.sql
-```
-
----
-
-## 🤝 Contribution
-
-### Workflow
-
-1. Fork le projet
-2. Créer une branche (`git checkout -b feature/AmazingFeature`)
-3. Commit les changements (`git commit -m 'Add AmazingFeature'`)
-4. Push vers la branche (`git push origin feature/AmazingFeature`)
-5. Ouvrir une Pull Request
-
-### Standards de Code
-
-- **Backend :** ESLint + Prettier
-- **Frontend :** ESLint + Prettier
-- **Conventions :** camelCase pour JS, PascalCase pour composants React
-- **Commits :** Conventional Commits
-
----
-
-## 📄 Licence
-
-Distribué sous licence MIT. Voir `LICENSE` pour plus d'informations.
-
----
-
-## 👥 Équipe
-
-**Développé pour :** Ministère DRESI  
-**Développé par :** Said Ali  
-**Année :** 2026
-
----
-
-## 📞 Support
-
-Pour toute question ou problème :
-
-- 📧 Email : support@dresi.gov
-- 📱 Téléphone : +XXX XXX XXX XXX
-- 🌐 Site web : https://dresi.gov
-
----
-
-## 🎯 Roadmap
-
-### Version 1.1 (À venir)
-- [ ] Tests unitaires complets
-- [ ] Tests E2E avec Cypress
-- [ ] API Documentation avec Swagger
-- [ ] Monitoring avec Prometheus + Grafana
-- [ ] Cache Redis
-
-### Version 1.2
-- [ ] Application mobile (React Native)
-- [ ] Notifications push (Firebase)
-- [ ] Intégration Slack/Teams
-- [ ] Rapports PDF automatiques
-
-### Version 2.0
-- [ ] Microservices architecture
-- [ ] Kubernetes deployment
-- [ ] IA avancée (Deep Learning)
-- [ ] Blockchain pour l'audit
-
----
-
-## 🙏 Remerciements
-
-- **CoreUI** - Framework UI React
-- **Express.js** - Framework backend
-- **PostgreSQL** - Base de données
-- **scikit-learn** - Modèles ML
-- **Tous les contributeurs**
-
----
-
-## 📸 Captures d'Écran
-
-### Dashboard
-![Dashboard](./docs/screenshots/dashboard.png)
-
-### Gestion des Tickets
-![Tickets](./docs/screenshots/tickets.png)
-
-### Inventaire des Assets
-![Assets](./docs/screenshots/assets.png)
-
-### Chatbot
-![Chatbot](./docs/screenshots/chatbot.png)
-
----
-
-## 📚 Ressources
-
-- [Documentation PostgreSQL](https://www.postgresql.org/docs/)
-- [Documentation Express](https://expressjs.com/)
-- [Documentation React](https://react.dev/)
-- [Documentation CoreUI](https://coreui.io/react/)
-- [Documentation scikit-learn](https://scikit-learn.org/)
-
----
-
-## ⚡ Quick Start
+### 9.4 Vérifier le frontend
 
 ```bash
-# 1. Cloner
-git clone https://github.com/saidasaidali/itsm_platform.git
-cd itsm-platform
+# Le frontend doit répondre sur http://localhost:3001
+curl -s -o /dev/null -w "%{http_code}" http://localhost:3001
 
-# 2. Backend
-cd backend
-npm install
-cp .env.example .env
-# Éditer .env
-npm run dev
+# Réponse attendue : 200
+```
 
-# 3. Frontend (nouveau terminal)
-cd frontend
-npm install
-npm run dev
+### 9.5 Vérifier les dépendances
 
-# 4. Accéder à l'application
-# Frontend : http://localhost:3001
-# Backend : http://localhost:3000
+```bash
+# Backend
+cd backend && node -e "console.log('Modules chargés:', Object.keys(require.cache).length)"
+
+# Frontend
+cd frontend && npx vite --version
+
+# Python ML
+cd backend/ml && python -c "import fastapi, sklearn, pandas; print('ML dependencies OK')"
+```
+
+### 9.6 Vérifier Ollama
+
+```bash
+curl http://localhost:11434/api/tags
+
+# Réponse attendue : liste des modèles disponibles
+```
+
+### 9.7 Tableau de vérification complet
+
+| Service | URL | Commande de vérification |
+|---|---|---|
+| Backend API | `http://localhost:3000/api/health` | `curl localhost:3000/api/health` |
+| ML Service | `http://localhost:8001/health` | `curl localhost:8001/health` |
+| Frontend | `http://localhost:3001` | Ouvrir dans le navigateur |
+| PostgreSQL | `localhost:5432` | `psql -U postgres -d itsm_platform -c "SELECT 1"` |
+| Ollama | `http://localhost:11434` | `curl localhost:11434/api/tags` |
+
+---
+
+## 10. Dépannage
+
+### 10.1 Erreurs de connexion PostgreSQL
+
+**Erreur :** `ECONNREFUSED` ou `password authentication failed`
+
+**Solutions :**
+
+1. Vérifiez que PostgreSQL est en cours d'exécution :
+   ```bash
+   sudo systemctl status postgresql
+   ```
+
+2. Vérifiez le fichier `pg_hba.conf` :
+   ```bash
+   # Localiser le fichier
+   psql -U postgres -c "SHOW hba_file;"
+   
+   # Assurez-vous que l'authentification est configurée :
+   # host all all 127.0.0.1/32 md5
+   ```
+
+3. Testez la connexion :
+   ```bash
+   psql -U postgres -h localhost -d itsm_platform
+   ```
+
+### 10.2 Le service ML ne démarre pas
+
+**Erreur :** `[ML-Launcher] Python non disponible, service ML désactivé`
+
+**Solutions :**
+
+1. Vérifiez que Python 3 est installé :
+   ```bash
+   python --version
+   ```
+
+2. Installez les dépendances manuellement :
+   ```bash
+   cd backend/ml
+   pip install -r requirements.txt
+   ```
+
+3. Démarrez manuellement :
+   ```bash
+   python app.py
+   ```
+
+### 10.3 CORS / Connexion frontend-backend
+
+**Erreur :** `Blocked by CORS policy` dans la console navigateur
+
+**Solutions :**
+
+1. Vérifiez que `FRONTEND_URL` dans `backend/.env` correspond au port du frontend :
+   ```env
+   FRONTEND_URL=http://localhost:3001
+   ```
+
+2. Vérifiez `VITE_API_URL` dans `frontend/.env` :
+   ```env
+   VITE_API_URL=http://localhost:3000
+   ```
+
+### 10.4 Erreurs SMTP (emails)
+
+**Erreur :** `[EmailService] Erreur SMTP`
+
+**Solutions :**
+
+1. Vérifiez la configuration SMTP dans l'interface Paramètres ou dans `.env`
+2. Pour Gmail, utilisez un **mot de passe d'application** (pas le mot de passe principal) :
+   - Allez sur https://myaccount.google.com/apppasswords
+   - Générez un mot de passe pour "Appareil"
+3. Testez la connexion SMTP :
+   ```bash
+   node -e "const nodemailer = require('nodemailer');"
+   ```
+
+### 10.5 Whisper / Reconnaissance vocale
+
+**Erreur :** `Whisper executable introuvable`
+
+**Solutions :**
+
+1. Téléchargez `whisper-cli.exe` depuis les releases GitHub
+2. Mettez à jour `WHISPER_CPP_PATH` dans `.env` :
+   ```env
+   WHISPER_CPP_PATH=C:/chemin/vers/whisper-cli.exe
+   ```
+3. Téléchargez le modèle `ggml-base.bin` dans `backend/models/`
+
+**Erreur :** `ffmpeg is not installed`
+
+**Solution :** Installez ffmpeg et ajoutez-le au PATH
+
+### 10.6 Le chatbot ne répond pas
+
+**Solutions :**
+
+1. Vérifiez qu'Ollama est lancé :
+   ```bash
+   ollama serve
+   ```
+
+2. Vérifiez que le modèle est téléchargé :
+   ```bash
+   ollama list
+   ```
+
+3. Vérifiez la configuration du chatbot dans les paramètres
+
+### 10.7 Les notifications ne s'affichent pas
+
+**Solutions :**
+
+1. Vérifiez que les notifications sont activées dans les préférences utilisateur
+2. Vérifiez l'intervalle de polling dans `frontend/.env` :
+   ```env
+   VITE_NOTIFICATION_POLL_INTERVAL=30000
+   ```
+
+### 10.8 La découverte réseau échoue
+
+**Erreur :** `[ADScan] Erreur globale`
+
+**Solutions :**
+
+1. Vérifiez que PowerShell 7+ est installé
+2. Vérifiez que le script `scan-ad.ps1` a les droits d'exécution
+3. Vérifiez les paramètres AD dans `.env` :
+   ```env
+   AD_SERVER=ldap://votre-serveur-ad.com
+   AD_DOMAIN=DRESI
+   AD_USERNAME=service_account
+   AD_PASSWORD=service_password
+   ```
+
+### 10.9 Port déjà utilisé
+
+**Erreur :** `EADDRINUSE: address already in use`
+
+**Solutions :**
+
+```bash
+# Trouver le processus utilisant le port 3000
+netstat -ano | findstr :3000
+
+# Tuer le processus (Windows)
+taskkill /PID <PID> /F
+
+# Changer de port dans .env
+PORT=3002
+```
+
+### 10.10 Erreurs d'import Excel
+
+**Solutions :**
+
+1. Vérifiez le format du fichier (.xlsx ou .xls)
+2. Vérifiez que la première ligne contient les en-têtes
+3. Vérifiez la limite de taille dans `.env` :
+   ```env
+   MAX_FILE_SIZE=10485760  # 10 Mo
+   ```
+
+---
+
+## 11. Guide de contribution
+
+### 11.1 Structure des branches Git
+
+```
+main                    # Branche de production
+├── develop             # Branche de développement
+    ├── feature/*       # Nouvelles fonctionnalités
+    ├── fix/*           # Corrections de bugs
+    ├── refactor/*      # Refactoring
+    ├── docs/*          # Documentation
+    └── chore/*         # Tâches techniques (dépendances, config)
+```
+
+**Conventions de nommage :**
+
+```bash
+feature/gestion-des-sessions-distance
+fix/expiration-token-jwt
+refactor/service-email-optimisation
+docs/api-authentication
+chore/mise-a-jour-dependances
+```
+
+### 11.2 Workflow Git
+
+```bash
+# 1. Créer une branche depuis develop
+git checkout develop
+git pull origin develop
+git checkout -b feature/ma-fonctionnalite
+
+# 2. Faire les modifications et commits
+git add .
+git commit -m "feat: ajout de la gestion des sessions à distance"
+
+# 3. Pusher et créer une Pull Request
+git push origin feature/ma-fonctionnalite
+# Créer une PR vers develop sur GitHub
+
+# 4. Après review et merge, supprimer la branche
+git branch -d feature/ma-fonctionnalite
+```
+
+**Conventions de message de commit :**
+
+```
+feat: nouvelle fonctionnalité
+fix: correction de bug
+refactor: refactoring de code
+docs: documentation
+chore: tâche technique
+style: formatage (indentation, etc.)
+test: ajout/modification de tests
+perf: amélioration de performance
+```
+
+### 11.3 Bonnes pratiques de développement
+
+#### Backend (Node.js/Express)
+
+- Utilisez les **imports ES modules** (`import`/`export`) — le projet est configuré avec `"type": "module"`
+- Suivez l'architecture **MVC** : routes → controllers → services
+- Validez les entrées avec `express-validator`
+- Gérez les erreurs avec des **middlewares** (voir `app.js`)
+- Utilisez `dotenv` pour la configuration
+- Écrivez les requêtes SQL avec **paramètres préparés** (`$1`, `$2`)
+- Documentez les fonctions complexes avec JSDoc
+
+#### Frontend (React/CoreUI)
+
+- Utilisez les **composants fonctionnels** et les **hooks**
+- Le routing est basé sur **HashRouter** (`/#/...`)
+- Support **RTL** pour l'arabe (géré automatiquement via `languageMiddleware`)
+- Lazy loading des pages avec `React.lazy()`
+- Utilisez les variables d'environnement `VITE_*` accessibles via `import.meta.env`
+- Les services API sont centralisés dans `src/services/`
+- L'internationalisation utilise `i18next` avec 3 langues (fr, en, ar)
+
+#### Base de données
+
+- Les migrations sont dans `backend/schema.sql` et `backend/migration_*.sql`
+- Les index sont préfixés par `idx_`
+- Les contraintes de validation utilisent les préfixes `_check`
+- Utilisez les types JSONB pour les données flexibles
+- Utilisez les vues (VIEW) pour les requêtes complexes (ex: `asset_reliability`, `chatbot_top_cases`)
+
+#### API
+
+Toutes les routes sont préfixées par `/api` :
+
+| Route | Description |
+|---|---|
+| `/api/auth` | Authentification (login, register, reset password) |
+| `/api/users` | Gestion des utilisateurs |
+| `/api/tickets` | Gestion des tickets |
+| `/api/assets` | Gestion des actifs |
+| `/api/knowledge` | Base de connaissance |
+| `/api/notifications` | Notifications |
+| `/api/anomalies` | Anomalies réseau |
+| `/api/cmdb` | Smart CMDB |
+| `/api/auto-ticketing` | Auto-ticketing |
+| `/api/dashboard` | Tableau de bord |
+| `/api/settings` | Paramètres système |
+| `/api/chatbot` | Chatbot (messages, voix) |
+| `/api/recommendations` | Recommandations technicien |
+| `/api/sentiment` | Analyse de sentiment |
+| `/api/qr` | QR codes |
+| `/api/health` | Health check |
+
+### 11.4 Tests
+
+Les tests peuvent être ajoutés dans les dossiers `__tests__/` correspondants :
+
+```bash
+# Backend
+backend/src/__tests__/
+
+# Frontend
+frontend/src/__tests__/
 ```
 
 ---
 
-## 🎓 Formation
+## Licence
 
-### Pour les nouveaux développeurs
-
-1. **Lire la documentation** : Ce README + docs/
-2. **Comprendre l'architecture** : Voir section Architecture
-3. **Explorer le code** : Commencer par les controllers
-4. **Tester les API** : Utiliser Postman/Thunder Client
-5. **Consulter les rapports d'audit** : Comprendre les corrections apportées
-
-### Pour les administrateurs
-
-1. **Installation** : Suivre la section Installation
-2. **Configuration** : Configurer .env et la base de données
-3. **Démarrage** : Lancer backend + frontend
-4. **Première connexion** : 
-   - Admin par défaut : admin@dresi.gov / Admin@123
-   - **Changer le mot de passe immédiatement**
+Ce projet est sous licence MIT. Voir le fichier [`frontend/LICENSE`](frontend/LICENSE) pour plus de détails.
 
 ---
 
-## 🔄 Changelog
+## Contact
 
-### Version 1.0.0 (26/06/2026)
-- ✅ Release initiale
-- ✅ Gestion complète des tickets
-- ✅ Gestion complète des assets
-- ✅ Système de notifications
-- ✅ Chatbot avec reconnaissance vocale
-- ✅ Auto-ticketing intelligent
-- ✅ Détection d'anomalies réseau
-- ✅ Modèles ML intégrés
-- ✅ Multi-langue (FR/EN/AR)
-- ✅ Thème light/dark
-- ✅ Import Excel
-- ✅ Scan réseau SNMP/AD
-
----
-
-## 📄 Licence
-
-Ce projet est sous licence MIT. Voir le fichier `LICENSE` pour plus de détails.
-
----
-
-## 🌟 Stars History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=saidasaidali/itsm_platform&type=Date)](https://star-history.com/#saidasaidali/itsm_platform&Date)
-
----
-
-<div align="center">
-
-**Développé avec ❤️ pour le ministère DRESI**
-
-[Website](https://dresi.gov) • [Documentation](./docs) • [Support](mailto:support@dresi.gov)
-
-</div>
+- **Dépôt GitHub :** [https://github.com/saidasaidali/itsm_platform](https://github.com/saidasaidali/itsm_platform)
+- **Documentation architecture :** [frontend/ARCHITECTURE.md](frontend/ARCHITECTURE.md)
+- **Guide développement :** [frontend/DEVELOPMENT.md](frontend/DEVELOPMENT.md)
