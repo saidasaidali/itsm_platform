@@ -18,6 +18,11 @@ import {
 } from '../../services/ticketService'
 import { getActiveTechnicians } from '../../services/userService'
 import { getTechnicianRecommendation } from '../../services/recommendationService'
+import { 
+  getSentimentColor, 
+  getEmotionIcon, 
+  formatSentiment 
+} from '../../services/sentimentService'
 import { translateTicketStatus } from '../../utils/translate'
 
 const STATUS_COLORS = {
@@ -401,6 +406,41 @@ const TicketDetail = () => {
                   {t('ticket_detail.msg_auto_generated')}
                 </CAlert>
               )}
+
+              {/* ── Indicateur de sentiment ── */}
+              {ticket.sentiment && ticket.sentiment !== 'neutre' && (
+                <div className="mt-3 p-3 rounded" style={{ 
+                  background: ticket.sentiment_is_critical ? 'rgba(220,53,69,0.08)' : 'rgba(255,193,7,0.08)',
+                  border: `1px solid ${ticket.sentiment_is_critical ? '#dc3545' : '#ffc107'}`
+                }}>
+                  <div className="d-flex align-items-center gap-2 mb-2">
+                    <CBadge color={getSentimentColor(ticket.sentiment)} className="fs-6">
+                      {formatSentiment(ticket.sentiment)}
+                    </CBadge>
+                    {ticket.sentiment_is_critical && (
+                      <CBadge color="danger" className="fs-6">
+                        {t('sentiment.critical')}
+                      </CBadge>
+                    )}
+                    <span className="text-muted small">
+                      {t('sentiment.score')}: {ticket.sentiment_score}/100 • {t('sentiment.intensity')}: {ticket.sentiment_intensity}/100
+                    </span>
+                  </div>
+                  
+                  {ticket.sentiment_emotions && ticket.sentiment_emotions.length > 0 && (
+                    <div className="small">
+                      <strong>{t('sentiment.emotions')}:</strong>
+                      <div className="d-flex gap-2 mt-1">
+                        {ticket.sentiment_emotions.map((emotion, idx) => (
+                          <CBadge key={idx} color="warning" className="text-dark">
+                            {getEmotionIcon(emotion)} {t(`sentiment.${emotion}`)}
+                          </CBadge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </CCardBody>
           </CCard>
 
@@ -569,8 +609,15 @@ const TicketDetail = () => {
               <CListGroup className="mb-4">
                 {ticket.comments?.map((c) => (
                   <CListGroupItem key={c.id} color={c.isInternal ? 'warning' : ''}>
-                    <div className="d-flex justify-content-between">
-                      <strong>{c.author}</strong>
+                    <div className="d-flex justify-content-between align-items-start">
+                      <div>
+                        <strong>{c.author}</strong>
+                        {c.sentiment && c.sentiment !== 'neutre' && (
+                          <CBadge color={getSentimentColor(c.sentiment)} className="ms-2" style={{ fontSize: 10 }}>
+                            {getEmotionIcon(c.sentiment)} {formatSentiment(c.sentiment)}
+                          </CBadge>
+                        )}
+                      </div>
                       <small className="text-muted">
                         {new Date(c.createdAt).toLocaleString(
                           t('common.locale', { defaultValue: 'fr-FR' })

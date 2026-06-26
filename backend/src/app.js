@@ -3,6 +3,7 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import multer from 'multer';
 
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
@@ -21,15 +22,41 @@ import dashboardRoutes from './routes/dashboardRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import { loadSettings } from './services/settingsService.js';
 import chatbotRoutes from './routes/chatbotRoutes.js';
+import { voiceMessage } from './controllers/chatbotController.js';
 import suggestionRoutes from './routes/suggestionRoutes.js';
 import recommendationRoutes from './routes/recommendationRoutes.js';
+import sentimentRoutes from './routes/sentimentRoutes.js';
+import qrCodeRoutes from './routes/qrCodeRoutes.js';
+import { runQRCodeMigration } from './services/qrCodeMigration.js';
 import languageMiddleware from './middlewares/languageMiddleware.js';
 import { startMLService, stopMLService } from './services/startMLService.js';
 import { t } from './utils/i18n.js';
+import pool from './db.js';
+
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Configuration multer pour l'upload de fichiers audio
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB max
+  },
+  fileFilter: (req, file, cb) => {
+    // Accepter tous les fichiers audio (mimetype commence par 'audio/')
+    // ou les types courants même sans codec spécifié
+    const isAudio = file.mimetype.startsWith('audio/') || 
+                    ['application/octet-stream'].includes(file.mimetype);
+    if (isAudio) {
+      cb(null, true);
+    } else {
+      cb(new Error('Type de fichier non autorisé. Seuls les fichiers audio sont acceptés.'));
+    }
+  }
+});
 
 app.use(helmet());
 app.use(cors({
@@ -56,8 +83,13 @@ app.use('/api/cmdb', smartCmdbRoutes);
 app.use('/api/auto-ticketing', autoTicketingRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/settings', settingsRoutes);
+// Route pour upload audio avec multer
+app.post('/api/chatbot/voice', upload.single('audio'), voiceMessage);
+
 app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/recommendations', recommendationRoutes);
+app.use('/api/sentiment', sentimentRoutes);
+app.use('/api/qr', qrCodeRoutes);
 app.use((req, res) => {
   res.status(404).json({ success: false, message: t(req, 'route_not_found') });
 });
@@ -71,9 +103,30 @@ loadSettings().then(() => {
   console.log('[Settings] Paramètres système chargés depuis la base.');
 });
 
+// Migration automatique pour les colonnes de sentiment
+pool.query(`
+  ALTER TABLE tickets ADD COLUMN IF NOT EXISTS sentiment VARCHAR(20) DEFAULT 'neutre';
+  ALTER TABLE tickets ADD COLUMN IF NOT EXISTS sentiment_score INTEGER DEFAULT 0;
+  ALTER TABLE tickets ADD COLUMN IF NOT EXISTS sentiment_emotions JSONB DEFAULT '[]'::jsonb;
+  ALTER TABLE tickets ADD COLUMN IF NOT EXISTS sentiment_intensity INTEGER DEFAULT 0;
+  ALTER TABLE tickets ADD COLUMN IF NOT EXISTS sentiment_is_critical BOOLEAN DEFAULT FALSE;
+  ALTER TABLE tickets ADD COLUMN IF NOT EXISTS sentiment_analyzed_at TIMESTAMP;
+  ALTER TABLE ticket_comments ADD COLUMN IF NOT EXISTS sentiment VARCHAR(20) DEFAULT 'neutre';
+  ALTER TABLE ticket_comments ADD COLUMN IF NOT EXISTS sentiment_score INTEGER DEFAULT 0;
+  ALTER TABLE ticket_comments ADD COLUMN IF NOT EXISTS sentiment_emotions JSONB DEFAULT '[]'::jsonb;
+  ALTER TABLE ticket_comments ADD COLUMN IF NOT EXISTS sentiment_intensity INTEGER DEFAULT 0;
+  ALTER TABLE ticket_comments ADD COLUMN IF NOT EXISTS sentiment_is_critical BOOLEAN DEFAULT FALSE;
+`).then(() => {
+  console.log('[Migration] Colonnes de sentiment ajoutées avec succès.');
+}).catch(err => {
+  console.error('[Migration] Erreur lors de l\'ajout des colonnes de sentiment:', err.message);
+});
+
 
 app.listen(PORT, "0.0.0.0", async () => {
   console.log(`✅ Serveur ITSM démarré sur http://localhost:${PORT}`);
+  // Migration QR Code
+  runQRCodeMigration();
   // Démarrage automatique du service ML en arrière-plan (aucune commande terminal requise)
   startMLService().catch((err) =>
     console.warn('[ML-Launcher] Démarrage ML ignoré (mode dégradé):', err.message)

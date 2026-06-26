@@ -27,7 +27,7 @@ function scanHost(ip) {
 async function notifyAdmins(title, message, assetId) {
   const { rows: admins } = await pool.query(
     `SELECT u.id FROM users u JOIN roles r ON u.role_id = r.id
-     WHERE r.name = 'Admin' AND u.is_active = true`
+     WHERE r.name = 'Admin' AND u.status = 'active'`
   );
   for (const admin of admins) {
     await pool.query(

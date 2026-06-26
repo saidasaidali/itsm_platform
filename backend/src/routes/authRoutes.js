@@ -52,9 +52,27 @@ router.post('/register', registerValidation, register);
 router.get('/me', authenticate, me);
 
 router.post('/logout', authenticate, logout);
-router.post('/forgot-password',          forgotPassword);
-router.get('/reset-password/:token',     checkResetToken);
-router.post('/reset-password/:token',    resetPassword);
 
-router.get('/:id/ml-prediction', authenticate, authorize('Admin', 'Technicien'), getAssetMLPrediction);
+// Validations pour les routes de réinitialisation de mot de passe
+const forgotPasswordValidation = [
+  body('email')
+    .notEmpty().withMessage('Email obligatoire.')
+    .isEmail().withMessage('Format email invalide.')
+    .normalizeEmail(),
+];
+
+const resetPasswordValidation = [
+  body('password')
+    .notEmpty().withMessage('Mot de passe obligatoire.')
+    .isLength({ min: 8 }).withMessage('Mot de passe : minimum 8 caractères.')
+    .matches(/[A-Z]/).withMessage('Mot de passe : au moins une majuscule.')
+    .matches(/[a-z]/).withMessage('Mot de passe : au moins une minuscule.')
+    .matches(/[0-9]/).withMessage('Mot de passe : au moins un chiffre.')
+    .matches(/[^A-Za-z0-9]/).withMessage('Mot de passe : au moins un caractère spécial.'),
+];
+
+router.post('/forgot-password',          forgotPasswordValidation, forgotPassword);
+router.get('/reset-password/:token',     checkResetToken);
+router.post('/reset-password/:token',    resetPasswordValidation, resetPassword);
+
 export default router;

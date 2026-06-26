@@ -3,8 +3,8 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import CIcon from '@coreui/icons-react'
-import { cilCommentSquare, cilX, cilSend, cilBook } from '@coreui/icons'
-import { askChatbot } from '../services/chatbotService'
+import { cilCommentSquare, cilX, cilSend, cilBook, cilMicrophone } from '@coreui/icons'
+import { askChatbot, sendVoiceMessage } from '../services/chatbotService'
 
 const Chatbot = () => {
   const { t, i18n } = useTranslation()
@@ -12,6 +12,9 @@ const Chatbot = () => {
   const [messages, setMessages] = useState([])
   const [input, setInput]     = useState('')
   const [loading, setLoading] = useState(false)
+  const [isRecording, setIsRecording] = useState(false)
+  const [isTranscribing, setIsTranscribing] = useState(false)
+  const [isSpeaking, setIsSpeaking] = useState(false)
   const [sessionKey] = useState(() => {
     let key = localStorage.getItem('chatbot_session_key')
     if (!key) {
@@ -22,6 +25,8 @@ const Chatbot = () => {
   })
   const bottomRef             = useRef(null)
   const inputRef              = useRef(null)
+  const mediaRecorderRef      = useRef(null)
+  const audioChunksRef        = useRef([])
   const navigate              = useNavigate()
 
   useEffect(() => {
@@ -40,6 +45,176 @@ const Chatbot = () => {
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 100)
   }, [open])
+
+  const speakText = async (text) => {
+    try {
+      setIsSpeaking(true)
+      const utterance = new SpeechSynthesisUtterance(text)
+      utterance.lang = 'fr-FR'
+      utterance.rate = 0.9
+      utterance.pitch = 1
+      
+      utterance.onend = () => setIsSpeaking(false)
+      utterance.onerror = () => setIsSpeaking(false)
+      
+      speechSynthesis.speak(utterance)
+    } catch (error) {
+      console.error('Erreur TTS:', error)
+      setIsSpeaking(false)
+    }
+  }
+
+  const stopSpeaking = () => {
+    speechSynthesis.cancel()
+    setIsSpeaking(false)
+  }
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' })
+      mediaRecorderRef.current = mediaRecorder
+      audioChunksRef.current = []
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data)
+        }
+      }
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+        await processVoiceMessage(audioBlob)
+        
+        // Nettoyer le stream
+        stream.getTracks().forEach(track => track.stop())
+      }
+
+      mediaRecorder.start()
+      setIsRecording(true)
+    } catch (error) {
+      console.error('Erreur microphone:', error)
+      alert('Impossible d\'accéder au microphone. Veuillez autoriser l\'accès au microphone.')
+    }
+  }
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop()
+      setIsRecording(false)
+    }
+  }
+
+  const processVoiceMessage = async (audioBlob) => {
+    setIsTranscribing(true)
+    setLoading(true)
+
+    try {
+      const data = await sendVoiceMessage(audioBlob, sessionKey)
+      
+      // Afficher la transcription comme message utilisateur
+      const userMsg = { 
+        id: Date.now(), 
+        role: 'user', 
+        text: data.transcript,
+        isVoice: true 
+      }
+      setMessages((prev) => [...prev, userMsg])
+
+      // Afficher la réponse du bot
+      const botMsg = {
+        id: Date.now() + 1,
+        role: 'bot',
+        text: data.answer,
+        sources: data.sources || [],
+        hasResults: data.hasResults,
+      }
+      setMessages((prev) => [...prev, botMsg])
+    } catch (error) {
+      console.error('Erreur traitement vocal:', error)
+      // Fallback: utiliser l'API Web Speech pour la transcription côté client
+      const fallbackTranscript = await transcribeWithWebSpeech()
+      if (fallbackTranscript) {
+        const userMsg = { 
+          id: Date.now(), 
+          role: 'user', 
+          text: fallbackTranscript,
+          isVoice: true 
+        }
+        setMessages((prev) => [...prev, userMsg])
+        
+        // Envoyer le texte transcrit au chatbot
+        try {
+          const data = await askChatbot(fallbackTranscript, sessionKey)
+          const botMsg = {
+            id: Date.now() + 1,
+            role: 'bot',
+            text: data.answer,
+            sources: data.sources || [],
+            hasResults: data.hasResults,
+          }
+          setMessages((prev) => [...prev, botMsg])
+        } catch {
+          setMessages((prev) => [...prev, {
+            id: Date.now() + 1,
+            role: 'bot',
+            text: t('chatbot.error'),
+            sources: [],
+          }])
+        }
+      } else {
+        setMessages((prev) => [...prev, {
+          id: Date.now() + 1,
+          role: 'bot',
+          text: t('chatbot.voice_error'),
+          sources: [],
+        }])
+      }
+    } finally {
+      setIsTranscribing(false)
+      setLoading(false)
+    }
+  }
+
+  const transcribeWithWebSpeech = () => {
+    return new Promise((resolve) => {
+      if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        console.error('Web Speech API non supportée')
+        resolve(null)
+        return
+      }
+
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+      const recognition = new SpeechRecognition()
+      recognition.lang = 'fr-FR'
+      recognition.interimResults = false
+      recognition.maxAlternatives = 1
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript
+        resolve(transcript)
+      }
+
+      recognition.onerror = (event) => {
+        console.error('Erreur reconnaissance vocale:', event.error)
+        resolve(null)
+      }
+
+      recognition.onend = () => {
+        if (!recognition.result) {
+          resolve(null)
+        }
+      }
+
+      recognition.start()
+      
+      // Timeout après 10 secondes
+      setTimeout(() => {
+        recognition.stop()
+        resolve(null)
+      }, 10000)
+    })
+  }
 
   const sendMessage = async () => {
     const text = input.trim()
@@ -79,6 +254,12 @@ const Chatbot = () => {
     }
   }
 
+  const handleMessageClick = async (msg) => {
+    if (msg.role === 'bot' && !isSpeaking) {
+      await speakText(msg.text)
+    }
+  }
+
   return (
     <>
       <button
@@ -108,7 +289,7 @@ const Chatbot = () => {
       {open && (
         <div style={{
           position: 'fixed', bottom: 92, right: 28, zIndex: 1049,
-          width: 360, height: 500,
+          width: 360, height: 520,
           background: 'var(--cui-body-bg)',
           border: '1px solid var(--cui-border-color)',
           borderRadius: 16,
@@ -128,12 +309,26 @@ const Chatbot = () => {
                 {t('chatbot.subtitle')}
               </div>
             </div>
-            <button
-              onClick={() => setOpen(false)}
-              style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 4 }}
-            >
-              <CIcon icon={cilX} size="sm" />
-            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {isSpeaking && (
+                <button
+                  onClick={stopSpeaking}
+                  style={{
+                    background: 'rgba(255,255,255,0.2)',
+                    border: 'none', color: '#fff', cursor: 'pointer',
+                    padding: '4px 8px', borderRadius: 4, fontSize: 11
+                  }}
+                >
+                  {t('chatbot.stop_speaking')}
+                </button>
+              )}
+              <button
+                onClick={() => setOpen(false)}
+                style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 4 }}
+              >
+                <CIcon icon={cilX} size="sm" />
+              </button>
+            </div>
           </div>
 
           <div style={{
@@ -142,10 +337,15 @@ const Chatbot = () => {
           }}>
             {messages.map((msg) => (
               <div key={msg.id}>
-                <div style={{
-                  display: 'flex',
-                  justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                }}>
+                <div 
+                  style={{
+                    display: 'flex',
+                    justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                    cursor: msg.role === 'bot' ? 'pointer' : 'default',
+                  }}
+                  onClick={() => handleMessageClick(msg)}
+                  title={msg.role === 'bot' ? t('chatbot.click_to_speak') : ''}
+                >
                   <div style={{
                     maxWidth: '82%',
                     padding: '10px 14px',
@@ -157,8 +357,29 @@ const Chatbot = () => {
                       : 'var(--cui-tertiary-bg)',
                     color: msg.role === 'user' ? '#fff' : 'var(--cui-body-color)',
                     fontSize: 13, lineHeight: 1.55,
+                    position: 'relative',
                   }}>
                     {msg.text}
+                    {msg.isVoice && (
+                      <span style={{
+                        marginLeft: 6,
+                        fontSize: 10,
+                        opacity: 0.8,
+                      }}>
+                        🎤
+                      </span>
+                    )}
+                    {msg.role === 'bot' && !isSpeaking && (
+                      <span style={{
+                        position: 'absolute',
+                        top: 4,
+                        right: 4,
+                        fontSize: 10,
+                        opacity: 0.5,
+                      }}>
+                        🔊
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -205,21 +426,27 @@ const Chatbot = () => {
               </div>
             ))}
 
-            {loading && (
+            {(loading || isTranscribing) && (
               <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
                 <div style={{
                   padding: '10px 16px', borderRadius: '16px 16px 16px 4px',
                   background: 'var(--cui-tertiary-bg)',
                   display: 'flex', gap: 4, alignItems: 'center',
                 }}>
-                  {[0, 1, 2].map((i) => (
-                    <span key={i} style={{
-                      width: 6, height: 6, borderRadius: '50%',
-                      background: 'var(--cui-secondary-color)',
-                      display: 'inline-block',
-                      animation: `chatDot 1.2s ease-in-out ${i * 0.2}s infinite`,
-                    }} />
-                  ))}
+                  {isRecording ? (
+                    <span style={{ color: '#ef4444', fontSize: 12 }}>🔴 Enregistrement...</span>
+                  ) : isTranscribing ? (
+                    <span style={{ color: '#f59e0b', fontSize: 12 }}>⏳ Transcription...</span>
+                  ) : (
+                    [0, 1, 2].map((i) => (
+                      <span key={i} style={{
+                        width: 6, height: 6, borderRadius: '50%',
+                        background: 'var(--cui-secondary-color)',
+                        display: 'inline-block',
+                        animation: `chatDot 1.2s ease-in-out ${i * 0.2}s infinite`,
+                      }} />
+                    ))
+                  )}
                 </div>
               </div>
             )}
@@ -239,6 +466,7 @@ const Chatbot = () => {
               onKeyDown={handleKeyDown}
               placeholder={t('chatbot.placeholder')}
               rows={1}
+              disabled={isRecording || isTranscribing}
               style={{
                 flex: 1, border: '1px solid var(--cui-border-color)',
                 borderRadius: 10, padding: '8px 12px', fontSize: 13,
@@ -247,20 +475,40 @@ const Chatbot = () => {
                 color: 'var(--cui-body-color)',
                 fontFamily: 'inherit', lineHeight: 1.5,
                 maxHeight: 80, overflowY: 'auto',
+                opacity: (isRecording || isTranscribing) ? 0.6 : 1,
               }}
               onInput={(e) => {
                 e.target.style.height = 'auto'
                 e.target.style.height = Math.min(e.target.scrollHeight, 80) + 'px'
               }}
             />
+            
             <button
-              onClick={sendMessage}
-              disabled={!input.trim() || loading}
+              onClick={isRecording ? stopRecording : startRecording}
+              disabled={loading || isTranscribing}
               style={{
                 width: 36, height: 36, borderRadius: '50%', border: 'none',
-                background: input.trim() && !loading ? '#2563eb' : 'var(--cui-secondary-bg)',
-                color: input.trim() && !loading ? '#fff' : 'var(--cui-secondary-color)',
-                cursor: input.trim() && !loading ? 'pointer' : 'default',
+                background: isRecording ? '#ef4444' : (loading || isTranscribing) ? 'var(--cui-secondary-bg)' : '#10b981',
+                color: '#fff',
+                cursor: (loading || isTranscribing) ? 'default' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'background 0.15s',
+                flexShrink: 0,
+                animation: isRecording ? 'pulse 1.5s ease-in-out infinite' : 'none',
+              }}
+              title={isRecording ? t('chatbot.stop_recording') : t('chatbot.start_recording')}
+            >
+              <CIcon icon={cilMicrophone} size="sm" />
+            </button>
+
+            <button
+              onClick={sendMessage}
+              disabled={!input.trim() || loading || isRecording || isTranscribing}
+              style={{
+                width: 36, height: 36, borderRadius: '50%', border: 'none',
+                background: input.trim() && !loading && !isRecording && !isTranscribing ? '#2563eb' : 'var(--cui-secondary-bg)',
+                color: input.trim() && !loading && !isRecording && !isTranscribing ? '#fff' : 'var(--cui-secondary-color)',
+                cursor: input.trim() && !loading && !isRecording && !isTranscribing ? 'pointer' : 'default',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 transition: 'background 0.15s',
                 flexShrink: 0,
@@ -276,6 +524,10 @@ const Chatbot = () => {
         @keyframes chatDot {
           0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
           40% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.1); }
         }
       `}</style>
     </>

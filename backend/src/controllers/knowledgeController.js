@@ -2,6 +2,10 @@
 import { validationResult } from 'express-validator';
 import pool from '../db.js';
 import { t } from '../utils/i18n.js';
+import * as XLSX from 'xlsx';
+import mammoth from 'mammoth';
+import pdfParse from 'pdf-parse';
+import chatbotBrain from '../services/chatbot/chatbotBrain.js';
 
 // ─── GET /api/knowledge — Liste + recherche full-text ─────────
 export async function getArticles(req, res) {
@@ -205,5 +209,184 @@ export async function deleteArticle(req, res) {
   } catch (err) {
     console.error('[deleteArticle]', err.message);
     return res.status(500).json({ success: false, message: t(req, 'server_error') });
+  }
+}
+
+// ─── POST /api/knowledge/import — Import documents (Admin/Technicien) ─────────
+export async function importArticlesFromExcel(req, res) {
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: 'Fichier manquant.' });
+  }
+
+  try {
+    const { buffer, mimetype, originalname } = req.file;
+    const ext = originalname.split('.').pop()?.toLowerCase();
+    const author_id = req.user.id;
+    const articleIds = [];
+
+    const normalize = (str) => str?.toString().toLowerCase().trim()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    const CATEGORY_MAP = {
+      'procédures': 'Procédures',
+      'procedures': 'Procédures',
+      'solutions techniques': 'Solutions techniques',
+      'solution technique': 'Solutions techniques',
+      'faq': 'FAQ',
+      'documentation materiel': 'Documentation matériel',
+      'documentation matériel': 'Documentation matériel',
+      'doc materiel': 'Documentation matériel',
+    };
+
+    const results = { created: [], skipped: [], errors: [] };
+
+    // ── Excel (.xlsx / .xls) ────────────────────────────────────────────────
+    if (ext === 'xlsx' || ext === 'xls' || mimetype.includes('spreadsheet') || mimetype.includes('excel')) {
+      const workbook = XLSX.read(buffer, { type: 'buffer' });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+      if (rows.length === 0) {
+        return res.status(400).json({ success: false, message: 'Le fichier Excel est vide.' });
+      }
+
+      for (const [i, row] of rows.entries()) {
+        const keys = Object.keys(row);
+        const findCol = (...names) => keys.find((k) => names.includes(normalize(k)));
+
+        const title = row[findCol('titre', 'title', 'nom', 'name')]?.toString().trim();
+        const summary = row[findCol('resume', 'résumé', 'summary', 'description')]?.toString().trim();
+        const content = row[findCol('contenu', 'content', 'texte', 'text', 'description')]?.toString().trim();
+        const categoryTxt = normalize(row[findCol('categorie', 'catégorie', 'category')]?.toString());
+        const keywordsTxt = row[findCol('motscles', 'mots-clés', 'keywords', 'tags', 'mots cles')]?.toString().trim();
+
+        if (!title || !summary || !content) {
+          const missing = [];
+          if (!title) missing.push('titre');
+          if (!summary) missing.push('résumé');
+          if (!content) missing.push('contenu');
+          results.errors.push({ ligne: i + 2, titre: title || '—', raison: `Champs manquants : ${missing.join(', ')}.` });
+          continue;
+        }
+
+        const category = CATEGORY_MAP[categoryTxt] || 'Procédures';
+        const cleanKeywords = keywordsTxt ? keywordsTxt.split(',').map((k) => k.trim().toLowerCase()).filter(Boolean) : [];
+
+        try {
+          const { rows: created } = await pool.query(
+            `INSERT INTO knowledge_articles (title, summary, content, category, keywords, author_id, is_published)
+             VALUES ($1, $2, $3, $4, $5, $6, TRUE) RETURNING id, title`,
+            [title, summary, content, category, cleanKeywords, author_id]
+          );
+          results.created.push({ ligne: i + 2, id: created[0].id, titre: title, categorie: category });
+          articleIds.push(created[0].id);
+        } catch (err) {
+          results.errors.push({ ligne: i + 2, titre: title, raison: `Erreur base de données : ${err.message}` });
+        }
+      }
+    }
+
+    // ── Word (.docx) ────────────────────────────────────────────────────────
+    else if (ext === 'docx' || mimetype.includes('wordprocessingml')) {
+      const { value: text } = await mammoth.extractRawText({ buffer });
+      const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+
+      if (lines.length === 0) {
+        return res.status(400).json({ success: false, message: 'Le document Word est vide.' });
+      }
+
+      // Stratégie simple : 1er paragraphe = titre, 2e = résumé, reste = contenu
+      const title = lines[0] || 'Document Word';
+      const summary = lines[1] || '';
+      const content = lines.slice(2).join('\n') || text;
+
+      try {
+        const { rows: created } = await pool.query(
+          `INSERT INTO knowledge_articles (title, summary, content, category, keywords, author_id, is_published)
+           VALUES ($1, $2, $3, $4, $5, $6, TRUE) RETURNING id, title`,
+          [title, summary, content, 'Procédures', [], author_id]
+        );
+        results.created.push({ ligne: 1, id: created[0].id, titre: title, categorie: 'Procédures' });
+        articleIds.push(created[0].id);
+      } catch (err) {
+        results.errors.push({ ligne: 1, titre: title, raison: `Erreur base de données : ${err.message}` });
+      }
+    }
+
+    // ── PDF (.pdf) ──────────────────────────────────────────────────────────
+    else if (ext === 'pdf' || mimetype === 'application/pdf') {
+      const data = await pdfParse(buffer);
+      const text = data.text?.trim() || '';
+
+      if (!text) {
+        return res.status(400).json({ success: false, message: 'Le PDF ne contient pas de texte extractible.' });
+      }
+
+      const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+      const title = lines[0] || 'Document PDF';
+      const summary = lines[1] || '';
+      const content = lines.slice(2).join('\n') || text;
+
+      try {
+        const { rows: created } = await pool.query(
+          `INSERT INTO knowledge_articles (title, summary, content, category, keywords, author_id, is_published)
+           VALUES ($1, $2, $3, $4, $5, $6, TRUE) RETURNING id, title`,
+          [title, summary, content, 'Procédures', [], author_id]
+        );
+        results.created.push({ ligne: 1, id: created[0].id, titre: title, categorie: 'Procédures' });
+        articleIds.push(created[0].id);
+      } catch (err) {
+        results.errors.push({ ligne: 1, titre: title, raison: `Erreur base de données : ${err.message}` });
+      }
+    }
+
+    // ── Texte (.txt) ────────────────────────────────────────────────────────
+    else if (ext === 'txt' || mimetype === 'text/plain') {
+      const text = buffer.toString('utf-8').trim();
+
+      if (!text) {
+        return res.status(400).json({ success: false, message: 'Le fichier texte est vide.' });
+      }
+
+      const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+      const title = lines[0] || 'Document texte';
+      const summary = lines[1] || '';
+      const content = lines.slice(2).join('\n') || text;
+
+      try {
+        const { rows: created } = await pool.query(
+          `INSERT INTO knowledge_articles (title, summary, content, category, keywords, author_id, is_published)
+           VALUES ($1, $2, $3, $4, $5, $6, TRUE) RETURNING id, title`,
+          [title, summary, content, 'Procédures', [], author_id]
+        );
+        results.created.push({ ligne: 1, id: created[0].id, titre: title, categorie: 'Procédures' });
+        articleIds.push(created[0].id);
+      } catch (err) {
+        results.errors.push({ ligne: 1, titre: title, raison: `Erreur base de données : ${err.message}` });
+      }
+    }
+
+    // ── Format non supporté ─────────────────────────────────────────────────
+    else {
+      return res.status(400).json({ success: false, message: 'Format non supporté. Utilisez .xlsx, .docx, .pdf ou .txt.' });
+    }
+
+    // Indexer les articles importés dans la base du chatbot
+    try {
+      for (const articleId of articleIds) {
+        await chatbotBrain.learnFromArticle(articleId);
+      }
+    } catch (indexError) {
+      console.error('[importArticlesFromExcel] Erreur indexation chatbot:', indexError.message);
+    }
+
+    return res.json({
+      success: true,
+      message: `Import terminé : ${results.created.length} créé(s), ${results.skipped.length} ignoré(s), ${results.errors.length} erreur(s).`,
+      results,
+    });
+  } catch (err) {
+    console.error('[importArticlesFromExcel]', err.message);
+    return res.status(500).json({ success: false, message: 'Erreur lors du traitement du fichier.' });
   }
 }

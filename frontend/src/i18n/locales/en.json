@@ -511,6 +511,16 @@
       "update": "Save",
       "create": "Create Asset"
     },
+    "import": {
+      "button": "Import",
+      "title": "Import Assets",
+      "subtitle": "Import a list of assets from an Excel file",
+      "format_title": "Expected Excel file format",
+      "format_desc": "The file can contain the following columns (any order, case-insensitive, FR/EN):",
+      "columns_info": "Columns",
+      "created_title": "Assets created ({{count}})",
+      "view_assets": "View asset list"
+    },
     "sections": {
       "identification": "Identification",
       "assignment": "Assignment",
@@ -736,6 +746,7 @@
     "assign_updated": "Assignment updated.",
     "unassign_success": "Asset unassigned.",
     "error": "Error",
+    "qr_generate_error": "Error generating QR Code",
     "warranty_expiring_text": "Warranty expires in",
     "warranty_expiring_days": "{{days}} day(s)",
     "warranty_expired_text": "Warranty expired",
@@ -872,15 +883,6 @@
       "saving": "Saving..."
     }
   },
-  "chatbot": {
-    "title": "Technical assistant",
-    "subtitle": "DRESI knowledge base",
-    "welcome": "Hello, I am the DRESI technical assistant. Ask me a question about an IT issue and I will search the knowledge base.",
-    "placeholder": "Describe your issue...",
-    "related_articles": "Related articles",
-    "error": "An error occurred. Please try again.",
-    "button_title": "Technical assistant"
-  },
   "errors": {
     "page404": {
       "title": "Oops! Page not found.",
@@ -984,5 +986,84 @@
     "uses_printer": "Printer",
     "same_subnet": "Same subnet",
     "same_department": "Same department"
+  },
+  "qr": {
+    "scan": {
+      "title": "QR Code Scan",
+      "subtitle": "Asset detected",
+      "actions": "Available actions",
+      "view_details": "View details",
+      "view_details_desc": "View complete asset information",
+      "report_problem": "Report a problem",
+      "report_problem_desc": "Create a failure ticket",
+      "create_ticket": "Create a ticket",
+      "create_ticket_desc": "New intervention request",
+      "chatbot": "Virtual assistant",
+      "chatbot_desc": "Get help",
+      "scanned_count": "Scanned {{count}} times",
+      "unauthorized": "Unauthorized access. You don't have the necessary permissions to access this resource."
+    }
+  },
+  "print_qr": {
+    "title": "Print QR Codes",
+    "filters": "Filters",
+    "location": "Room",
+    "department": "Department",
+    "type": "Asset Type",
+    "all_locations": "All rooms",
+    "all_departments": "All departments",
+    "all_types": "All types",
+    "reset_filters": "Reset filters",
+    "deselect_all": "Deselect all",
+    "selected_count": "asset(s) selected",
+    "labels_count": "label(s)",
+    "generate_qr": "Generate QR Codes",
+    "generating": "Generating...",
+    "preview_title": "Asset Preview",
+    "no_assets": "No assets match the selected filters.",
+    "load_error": "Error loading assets",
+    "generate_error": "Error generating QR Codes",
+    "no_qr_generated": "No QR Code could be generated.",
+    "print_title": "Asset QR Codes",
+    "print_generated": "Generated on",
+    "print_equipments": "asset(s)",
+    "print_footer": "DRESI ITSM Platform - Auto-generated",
+    "print_button": "Print",
+    "close_button": "Close",
+    "browser_blocked": "The browser blocked the window opening. Allow popups for this site.",
+    "refresh": "Refresh",
+    "select_hint": "Check assets for partial selection, or print all.",
+    "selected_hint": "{{count}} asset(s) checked will be printed.",
+    "print_selected": "Print {{count}} selected",
+    "print_all": "Print all ({{count}})",
+    "table_headers": {
+      "tag": "Tag",
+      "type": "Type",
+      "brand_model": "Brand / Model",
+      "location": "Room",
+      "department": "Department",
+      "status": "Status"
+    },
+    "select_all_title": "Select / deselect all",
+    "loading": "Loading assets..."
+  },
+  "chatbot": {
+    "title": "Technical assistant",
+    "subtitle": "DRESI knowledge base",
+    "welcome": "Hello, I am the DRESI technical assistant. Ask me a question about an IT issue and I will search the knowledge base.",
+    "placeholder": "Describe your issue...",
+    "related_articles": "Related articles",
+    "error": "An error occurred. Please try again.",
+    "button_title": "Technical assistant",
+    "start_recording": "Start voice recording",
+    "stop_recording": "Stop recording",
+    "stop_speaking": "Stop speaking",
+    "click_to_speak": "Click to listen to the response",
+    "widget": {
+      "title": "ITSM Assistant",
+      "placeholder": "Write a message...",
+      "send": "Send",
+      "error": "Sorry, an error occurred."
+    }
   }
 }

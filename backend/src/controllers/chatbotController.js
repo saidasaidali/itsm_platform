@@ -1,5 +1,66 @@
 import chatbotBrain from '../services/chatbot/chatbotBrain.js';
 import pool from '../db.js';
+import whisperService from '../services/whisperService.js';
+
+export const voiceMessage = async (req, res) => {
+  try {
+    console.log('[Voice] Reçu requête voice');
+    console.log('[Voice] Headers:', req.headers);
+    console.log('[Voice] Body keys:', Object.keys(req.body));
+    console.log('[Voice] File present:', !!req.file);
+    if (req.file) {
+      console.log('[Voice] File info:', {
+        fieldname: req.file.fieldname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Aucun fichier audio fourni. Vérifiez que le champ "audio" est présent dans le FormData.' 
+      });
+    }
+
+    const userId = req.user?.id;
+    const sessionKey = req.body.session_key || `session-${Date.now()}`;
+
+    console.log('[Voice] Session key:', sessionKey);
+    console.log('[Voice] User ID:', userId);
+
+    // Transcrire l'audio en texte
+    let transcript;
+    try {
+      transcript = await whisperService.transcribeWithFallback(req.file.buffer, 'fr');
+    } catch (whisperError) {
+      console.error('[Voice] Erreur Whisper:', whisperError.message);
+      return res.status(503).json({ 
+        success: false, 
+        message: 'La fonctionnalité vocale n\'est pas disponible. Whisper.cpp n\'est pas installé sur le serveur. Veuillez utiliser la saisie texte.',
+        service_unavailable: true
+      });
+    }
+    
+    if (!transcript || transcript.trim().length === 0) {
+      return res.status(400).json({ success: false, message: 'Transcription vide ou aucune parole détectée' });
+    }
+
+    // Envoyer le texte transcrit au pipeline du chatbot
+    const response = await chatbotBrain.processMessage(sessionKey, userId, transcript);
+
+    res.json({
+      success: true,
+      transcript: transcript,
+      answer: response.answer,
+      sources: response.sources,
+      hasResults: response.hasResults
+    });
+  } catch (error) {
+    console.error('[Chatbot] Erreur voiceMessage:', error);
+    res.status(500).json({ success: false, message: 'Erreur lors du traitement vocal' });
+  }
+};
 
 export const askChatbot = async (req, res) => {
   try {

@@ -85,9 +85,14 @@ const Parametres = () => {
 
       const stored = localStorage.getItem('itsm-auth-user')
       if (stored) {
-        const parsed = JSON.parse(stored)
-        const updated = { ...parsed, ...data.data }
-        localStorage.setItem('itsm-auth-user', JSON.stringify(updated))
+        try {
+          const parsed = JSON.parse(stored)
+          const updated = { ...parsed, ...data.data }
+          localStorage.setItem('itsm-auth-user', JSON.stringify(updated))
+        } catch (err) {
+          // Invalid JSON in localStorage, ignore and continue
+          console.error('Failed to parse stored user data:', err)
+        }
       }
 
       setAccountForm((prev) => ({ ...prev, password: '', confirmPassword: '' }))

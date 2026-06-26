@@ -3,6 +3,8 @@ import { validationResult } from 'express-validator';
 import pool from '../db.js';
 import emailService from '../services/emailService.js';
 import suggestionEngine from '../services/autoTicketing/suggestionEngine.js';
+import { analyzeSentiment, getSentimentActions } from '../services/sentimentAnalyzer.js';
+import { notifyAdmins } from '../services/notificationService.js';
 import { t } from '../utils/i18n.js';
 import chatbotBrain from '../services/chatbot/chatbotBrain.js';
 import workflowEngine, { WORKFLOW_TYPES } from '../services/workflowEngine.js';
@@ -132,8 +134,6 @@ export async function getTicketById(req, res) {
       return res.status(403).json({ success: false, message: t(req, 'access_denied') });
 
     // ── Transition automatique Assigné → En cours ──────────────
-    // Dès que le technicien assigné ouvre le ticket, il passe en cours
-    // automatiquement — plus besoin de cliquer "Prendre en charge"
     if (
       role === 'Technicien' &&
       ticket.assigned_to === userId &&
@@ -188,6 +188,7 @@ export async function getTicketById(req, res) {
     return res.status(500).json({ success: false, message: t(req, 'server_error') });
   }
 }
+
 // ─── POST /api/tickets — Agent seulement ──────────────────────────────────────
 export async function createTicket(req, res) {
   const errors = validationResult(req);
@@ -228,6 +229,42 @@ export async function createTicket(req, res) {
       ]
     );
     const ticket = rows[0];
+
+    // ── Analyse de sentiment ──────────────────────────────────────
+    const textToAnalyze = `${title} ${description}`;
+    const sentimentResult = analyzeSentiment(textToAnalyze);
+    const sentimentActions = getSentimentActions(textToAnalyze);
+
+    await pool.query(
+      `UPDATE tickets SET
+         sentiment = $1, sentiment_score = $2, sentiment_emotions = $3,
+         sentiment_intensity = $4, sentiment_is_critical = $5,
+         sentiment_analyzed_at = NOW()
+       WHERE id = $6`,
+      [
+        sentimentResult.sentiment,
+        sentimentResult.score,
+        JSON.stringify(sentimentResult.emotions),
+        sentimentResult.intensity,
+        sentimentActions.shouldMarkCritical,
+        ticket.id,
+      ]
+    );
+
+    if (sentimentActions.shouldMarkCritical && priority !== 'Haute') {
+      await pool.query(`UPDATE tickets SET priority = 'Haute' WHERE id = $1`, [ticket.id]);
+      ticket.priority = 'Haute';
+    }
+
+    if (sentimentActions.shouldNotifyManager) {
+      notifyAdmins({
+        type: 'sentiment_alert', ticketId: ticket.id,
+        ticketTitle: title, sentiment: sentimentResult.sentiment,
+        score: sentimentResult.score, emotions: sentimentResult.emotions,
+        reasons: sentimentActions.reason, priority: sentimentActions.priority,
+      }).catch(() => {});
+    }
+
     await addHistory(ticket.id, userId, 'created', null, 'Nouveau');
 
     if (asset_id) {
@@ -238,7 +275,7 @@ export async function createTicket(req, res) {
       );
     }
 
-    // Assignation automatique
+    // ── Assignation automatique ───────────────────────────────────
     const techId = await autoAssign();
     if (techId) {
       await pool.query(
@@ -250,8 +287,6 @@ export async function createTicket(req, res) {
       ticket.status = 'Assigné';
     }
 
-    // Notifications — userId passé comme actorId pour exclure le créateur
-    // des destinataires (un agent ne reçoit pas la notif de son propre ticket)
     await emailService.notifyTicketCreated(ticket, req.user.username, userId);
     if (techId) {
       await emailService.notifyAssigned(ticket, techId, req.user.username, userId);
@@ -261,7 +296,6 @@ export async function createTicket(req, res) {
       title, description, category, ticket.id
     );
 
-    // ── Déclenchement des workflows automatiques ──────────────
     await workflowEngine.triggerWorkflows(WORKFLOW_TYPES.TICKET_CREATED, ticket, userId);
 
     return res.status(201).json({
@@ -313,8 +347,6 @@ export async function updateStatus(req, res) {
     const updatedTicket = { ...ticket, status: newStatus };
     await addHistory(id, userId, 'status_change', ticket.status, newStatus);
 
-    // userId passé comme actorId — le technicien/admin qui change le statut
-    // ne reçoit pas la notification destinée au créateur
     await emailService.notifyStatusChange(
       ticket, newStatus, req.user.username, ticket.created_by, userId
     );
@@ -358,8 +390,6 @@ export async function assignTicket(req, res) {
     );
     await addHistory(id, userId, 'manual_assigned', String(rows[0].assigned_to), String(technicianId));
 
-    // userId passé comme actorId — si l'admin s'assigne lui-même le ticket
-    // (cas rare mais possible), il ne recevra pas la notification
     await emailService.notifyAssigned(rows[0], technicianId, req.user.username, userId);
 
     return res.json({ success: true, message: t(req, 'ticket_assigned', { username: techRows[0].username }) });
@@ -396,8 +426,6 @@ export async function transferTicket(req, res) {
     );
     await addHistory(id, userId, 'transferred', String(userId), String(technicianId));
 
-    // userId comme actorId — le technicien qui transfère ne reçoit pas
-    // la notification destinée au nouveau technicien assigné
     await emailService.notifyAssigned(rows[0], technicianId, req.user.username, userId);
 
     return res.json({ success: true, message: t(req, 'ticket_transferred', { username: techRows[0].username }) });
@@ -429,6 +457,35 @@ export async function addComment(req, res) {
        VALUES ($1, $2, $3, $4) RETURNING *`,
       [id, userId, message.trim(), internal]
     );
+
+    // ── Analyse de sentiment du commentaire ───────────────────────
+    const sentimentResult  = analyzeSentiment(message.trim());
+    const sentimentActions = getSentimentActions(message.trim());
+
+    await pool.query(
+      `UPDATE ticket_comments SET
+         sentiment = $1, sentiment_score = $2, sentiment_emotions = $3,
+         sentiment_intensity = $4, sentiment_is_critical = $5
+       WHERE id = $6`,
+      [
+        sentimentResult.sentiment,
+        sentimentResult.score,
+        JSON.stringify(sentimentResult.emotions),
+        sentimentResult.intensity,
+        sentimentResult.isCritical,
+        rows[0].id,
+      ]
+    );
+
+    if (sentimentResult.isCritical) {
+      notifyAdmins({
+        type: 'comment_sentiment_alert',
+        ticketId: id, ticketTitle: ticketRows[0].title,
+        commentId: rows[0].id, sentiment: sentimentResult.sentiment,
+        score: sentimentResult.score, emotions: sentimentResult.emotions,
+      }).catch(() => {});
+    }
+
     await pool.query('UPDATE tickets SET updated_at = NOW() WHERE id = $1', [id]);
     await addHistory(
       id, userId,
@@ -436,8 +493,6 @@ export async function addComment(req, res) {
       null, message.trim().substring(0, 100)
     );
 
-    // userId comme actorId — celui qui poste le commentaire ne reçoit pas
-    // sa propre notification
     await emailService.notifyComment(
       ticketRows[0], req.user.username, internal,
       ticketRows[0].created_by, ticketRows[0].assigned_to, userId
@@ -505,8 +560,6 @@ export async function getReliabilityAlerts(req, res) {
 }
 
 // ─── POST /api/tickets/:id/remote-session — Technicien/Admin ─────────────────
-// Le technicien initie une session à distance en fournissant l'ID ou le lien
-// généré par son outil (TeamViewer, AnyDesk, RustDesk, etc.)
 export async function startRemoteSession(req, res) {
   const { id } = req.params;
   const { session_id, tool, session_url } = req.body;
@@ -549,7 +602,6 @@ export async function startRemoteSession(req, res) {
       `Session ${tool || 'distante'} : ${session_id || session_url}`
     );
 
-    // Notifier l'agent créateur du ticket
     await emailService.notifyRemoteSession(ticket, req.user.username, session_id, tool, userId);
 
     return res.json({

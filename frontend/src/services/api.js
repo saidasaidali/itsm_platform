@@ -29,12 +29,22 @@ export const api = {
   get: (path) =>
     fetch(`${API_URL}${path}`, { headers: buildHeaders() }).then(handleResponse),
 
-  post: (path, body) =>
-    fetch(`${API_URL}${path}`, {
+  post: (path, body, options = {}) => {
+    const isFormData = body instanceof FormData
+    const headers = isFormData 
+      ? { 
+          'Accept-Language': getLang(),
+          ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+          ...options.headers,
+        }
+      : buildHeaders()
+    
+    return fetch(`${API_URL}${path}`, {
       method: 'POST',
-      headers: buildHeaders(),
-      body: JSON.stringify(body),
-    }).then(handleResponse),
+      headers,
+      body: isFormData ? body : JSON.stringify(body),
+    }).then(handleResponse)
+  },
 
   put: (path, body) =>
     fetch(`${API_URL}${path}`, {

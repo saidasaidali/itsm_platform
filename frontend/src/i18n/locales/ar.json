@@ -511,6 +511,16 @@
       "update": "حفظ",
       "create": "إنشاء المعدات"
     },
+    "import": {
+      "button": "استيراد",
+      "title": "استيراد المعدات",
+      "subtitle": "استيراد قائمة المعدات من ملف Excel",
+      "format_title": "تنسيق ملف Excel المطلوب",
+      "format_desc": "يمكن أن يحتوي الملف على الأعمدة التالية (أي ترتيب، غير حساس لحالة الأحرف، FR/EN):",
+      "columns_info": "الأعمدة",
+      "created_title": "تم إنشاء المعدات ({{count}})",
+      "view_assets": "عرض قائمة المعدات"
+    },
     "sections": {
       "identification": "التعريف",
       "assignment": "التخصيص",
@@ -736,6 +746,7 @@
     "assign_updated": "تم تحديث التخصيص.",
     "unassign_success": "تم إلغاء تخصيص المعدات.",
     "error": "خطأ",
+    "qr_generate_error": "خطأ في إنشاء رمز QR",
     "warranty_expiring_text": "الضمان ينتهي خلال",
     "warranty_expiring_days": "{{days}} أيام",
     "warranty_expired_text": "انتهى الضمان منذ",
@@ -984,5 +995,65 @@
     "uses_printer": "طابعة",
     "same_subnet": "نفس الشبكة الفرعية",
     "same_department": "نفس القسم"
+  },
+  "qr": {
+    "scan": {
+      "title": "مسح رمز QR",
+      "subtitle": "تم اكتشاف المعدات",
+      "actions": "الإجراءات المتاحة",
+      "view_details": "عرض التفاصيل",
+      "view_details_desc": "عرض معلومات المعدات الكاملة",
+      "report_problem": "الإبلاغ عن مشكلة",
+      "report_problem_desc": "إنشاء تذكرة عطل",
+      "create_ticket": "إنشاء تذكرة",
+      "create_ticket_desc": "طلب تدخل جديد",
+      "chatbot": "المساعد الافتراضي",
+      "chatbot_desc": "الحصول على مساعدة",
+      "scanned_count": "تم المسح {{count}} مرة",
+      "unauthorized": "وصول غير مصرح به. ليس لديك الأذونات اللازمة للوصول إلى هذا المورد."
+    }
+  },
+  "print_qr": {
+    "title": "طباعة رموز QR",
+    "filters": "التصفية",
+    "location": "القاعة",
+    "department": "القسم",
+    "type": "نوع المعدات",
+    "all_locations": "جميع القاعات",
+    "all_departments": "جميع الأقسام",
+    "all_types": "جميع الأنواع",
+    "reset_filters": "إعادة تعيين التصفية",
+    "deselect_all": "إلغاء تحديد الكل",
+    "selected_count": "معدات مختارة",
+    "labels_count": "ملصق(ات)",
+    "generate_qr": "إنشاء رموز QR",
+    "generating": "جارٍ الإنشاء...",
+    "preview_title": "معاينة المعدات",
+    "no_assets": "لا توجد معدات تطابق التصفية المحددة.",
+    "load_error": "خطأ في تحميل المعدات",
+    "generate_error": "خطأ في إنشاء رموز QR",
+    "no_qr_generated": "لم يتم إنشاء أي رمز QR.",
+    "print_title": "رموز QR للمعدات",
+    "print_generated": "تم الإنشاء في",
+    "print_equipments": "معدات",
+    "print_footer": "منصة DRESI ITSM - تم الإنشاء تلقائياً",
+    "print_button": "طباعة",
+    "close_button": "إغلاق",
+    "browser_blocked": "حظر المتصفح فتح النافذة. يرجى السماح بالنوافذ المنبثقة لهذا الموقع.",
+    "refresh": "تحديث",
+    "select_hint": "حدد المعدات لتحديد جزئي، أو اطبع الكل.",
+    "selected_hint": "{{count}} معدات محددة ستتم طباعتها.",
+    "print_selected": "طباعة {{count}} محددة",
+    "print_all": "طباعة الكل ({{count}})",
+    "table_headers": {
+      "tag": "العلامة",
+      "type": "النوع",
+      "brand_model": "الماركة / الموديل",
+      "location": "القاعة",
+      "department": "القسم",
+      "status": "الحالة"
+    },
+    "select_all_title": "تحديد / إلغاء تحديد الكل",
+    "loading": "جارٍ تحميل المعدات..."
   }
 }

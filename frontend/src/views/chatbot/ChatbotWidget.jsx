@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { api } from '../../services/api'
 import { CButton } from '@coreui/react'
 
 const ChatbotWidget = () => {
+  const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
@@ -42,7 +44,7 @@ const ChatbotWidget = () => {
       }
     } catch (err) {
       console.error(err)
-      setMessages(prev => [...prev, { role: 'bot', content: 'Désolé, une erreur est survenue.' }])
+      setMessages(prev => [...prev, { role: 'bot', content: t('chatbot.widget.error') }])
     }
     setIsTyping(false)
   }
@@ -86,7 +88,7 @@ const ChatbotWidget = () => {
             justifyContent: 'space-between',
             alignItems: 'center'
           }}>
-            <strong>Assistant ITSM</strong>
+            <strong>{t('chatbot.widget.title')}</strong>
             <button style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '20px' }} onClick={() => setIsOpen(false)}>×</button>
           </div>
           <div style={{ flex: 1, padding: '16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -130,9 +132,9 @@ const ChatbotWidget = () => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder="Écrivez un message..."
+               placeholder={t('chatbot.widget.placeholder')}
             />
-            <CButton color="primary" onClick={() => sendMessage()}>Envoyer</CButton>
+              <CButton color="primary" onClick={() => sendMessage()}>{t('chatbot.widget.send')}</CButton>
           </div>
         </div>
       )}

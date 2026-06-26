@@ -60,3 +60,20 @@ export const deleteArticle = async (id) => {
   const data = await api.delete(`/api/knowledge/${id}`)
   return data
 }
+
+export const importArticlesFromExcel = async (file) => {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const token = localStorage.getItem('itsm-auth-token')
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+
+  const response = await fetch(`${API_URL}/api/knowledge/import`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  })
+  const data = await response.json()
+  if (!response.ok) throw new Error(data.message || "Erreur lors de l'import.")
+  return data
+}

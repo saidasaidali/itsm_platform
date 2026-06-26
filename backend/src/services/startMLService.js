@@ -11,8 +11,8 @@ import fs from 'fs';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ML_DIR = join(__dirname, '..', '..', 'ml');
 const ML_PORT = process.env.ML_SERVICE_PORT || 8001;
-const MAX_RETRIES = 15;
 const RETRY_INTERVAL_MS = 2000;
+const MAX_RETRIES = 3; // Réduit pour éviter le spam de logs
 
 let mlProcess = null;
 let isStarting = false;
@@ -79,11 +79,20 @@ export async function startMLService() {
   if (isStarting || isReady) return;
   isStarting = true;
 
-  // Étape 1 : Installer les dépendances Python
+  // Étape 1 : Vérifier que Python est disponible
+  const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+  const pythonAvailable = await checkPythonAvailable(pythonCmd);
+  
+  if (!pythonAvailable) {
+    console.warn('[ML-Launcher] Python non disponible, service ML désactivé (mode dégradé)');
+    isStarting = false;
+    return;
+  }
+
+  // Étape 2 : Installer les dépendances Python
   await installPythonDeps();
 
-  // Étape 2 : Lancer le serveur FastAPI
-  const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+  // Étape 3 : Lancer le serveur FastAPI
   const appPath = join(ML_DIR, 'app.py');
 
   if (!fs.existsSync(appPath)) {
@@ -116,8 +125,8 @@ export async function startMLService() {
     isReady = false;
     isStarting = false;
 
-    // Tentative de redémarrage automatique après 5 secondes
-    if (code !== 0 && code !== null) {
+    // Tentative de redémarrage automatique après 5 secondes seulement si pas d'erreur de commande introuvable
+    if (code !== 0 && code !== null && code !== 9009) {
       console.log('[ML-Launcher] Redémarrage automatique dans 5 secondes...');
       setTimeout(() => startMLService(), 5000);
     }
@@ -130,8 +139,30 @@ export async function startMLService() {
     isStarting = false;
   });
 
-  // Étape 3 : Attendre que le service soit prêt
+  // Étape 4 : Attendre que le service soit prêt
   await waitForReady();
+}
+
+// Vérifier si Python est disponible
+async function checkPythonAvailable(pythonCmd) {
+  return new Promise((resolve) => {
+    const check = spawn(pythonCmd, ['--version'], { stdio: ['ignore', 'pipe', 'pipe'] });
+    
+    check.stdout.on('data', () => resolve(true));
+    check.stderr.on('data', () => resolve(true));
+    
+    check.on('error', () => resolve(false));
+    
+    check.on('exit', (code) => {
+      resolve(code === 0);
+    });
+    
+    // Timeout après 2 secondes
+    setTimeout(() => {
+      check.kill();
+      resolve(false);
+    }, 2000);
+  });
 }
 
 // Attendre que le health check passe
@@ -150,6 +181,8 @@ async function waitForReady() {
   isReady = false;
   isStarting = false;
 }
+
+// MAX_RETRIES déjà défini en haut du fichier
 
 // Arrêter proprement le service ML
 export function stopMLService() {

@@ -11,7 +11,7 @@ async function getSystemCreatorId() {
   const { rows } = await pool.query(
     `SELECT u.id FROM users u
      JOIN roles r ON u.role_id = r.id
-     WHERE r.name = 'Admin' AND u.is_active = true
+     WHERE r.name = 'Admin' AND u.status = 'active'
      ORDER BY u.id ASC LIMIT 1`
   );
   if (!rows[0]) throw new Error('Aucun admin actif trouvé pour créer le ticket automatique.');

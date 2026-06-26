@@ -23,7 +23,7 @@ import {
   CTableRow,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilSearch } from '@coreui/icons'
+import { cilSearch, cilCloudUpload, cilQrCode } from '@coreui/icons'
 import { getAssets, getWarrantyAlerts } from '../../services/assetService'
 import { getReliabilityAlerts } from '../../services/ticketService'
 import api from '../../services/api'
@@ -125,11 +125,25 @@ const Assets = () => {
           <small className="text-muted">{t('assets.list.total', { count: assets.length })}</small>
         </CCol>
         {role === 'Admin' && (
-          <CCol xs="auto">
-            <CButton color="primary" onClick={() => navigate('/assets/new')}>
-              {t('assets.list.add')}
-            </CButton>
-          </CCol>
+          <>
+            <CCol xs="auto">
+              <CButton color="primary" onClick={() => navigate('/assets/new')}>
+                {t('assets.list.add')}
+              </CButton>
+            </CCol>
+            <CCol xs="auto">
+              <CButton color="info" style={{ color: '#fff' }} onClick={() => navigate('/assets/import')}>
+                <CIcon icon={cilCloudUpload} className="me-1" />
+                {t('assets.import.button')}
+              </CButton>
+            </CCol>
+            <CCol xs="auto">
+              <CButton color="secondary" onClick={() => navigate('/assets/print-qr')}>
+                <CIcon icon={cilQrCode} className="me-1" />
+                Imprimer QR Codes
+              </CButton>
+            </CCol>
+          </>
         )}
       </CRow>
 

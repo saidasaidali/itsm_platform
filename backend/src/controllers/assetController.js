@@ -4,6 +4,7 @@ import pool from '../db.js';
 import { t } from '../utils/i18n.js';
 import anomalyDetector from '../services/networkDiscovery/anomalyDetector.js';
 import { getFullPrediction } from '../services/mlService.js';
+import * as XLSX from 'xlsx';
 
 
 // ─── Utilitaire historique ────────────────────────────────────
@@ -468,7 +469,7 @@ export async function heartbeat(req, res) {
         const { rows: admins } = await pool.query(
           `SELECT u.id FROM users u
            JOIN roles r ON u.role_id = r.id
-           WHERE r.name = 'Admin' AND u.is_active = true`
+           WHERE r.name = 'Admin' AND u.status = 'active'`
         );
         for (const admin of admins) {
           await pool.query(
@@ -573,5 +574,123 @@ export async function getAssetMLPrediction(req, res) {
   } catch (err) {
     console.error('[getAssetMLPrediction]', err.message);
     return res.status(500).json({ success: false, message: 'Erreur serveur.' });
+  }
+}
+
+// ─── POST /api/assets/import — Import Excel (Admin) ────────────────────────────
+export async function importAssetsFromExcel(req, res) {
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: 'Fichier Excel manquant.' });
+  }
+
+  try {
+    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+    const sheet    = workbook.Sheets[workbook.SheetNames[0]];
+    const rows     = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+    if (rows.length === 0) {
+      return res.status(400).json({ success: false, message: 'Le fichier est vide.' });
+    }
+
+    const normalize = (str) => str?.toString().toLowerCase().trim()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    const STATUS_MAP = {
+      'en service': 'En service',
+      'en panne': 'En panne',
+      'en maintenance': 'En maintenance',
+      'retire': 'Retiré',
+      'retiré': 'Retiré',
+    };
+
+    const results = { created: [], skipped: [], errors: [] };
+
+    for (const [i, row] of rows.entries()) {
+      const keys = Object.keys(row);
+      const findCol = (...names) => keys.find((k) => names.includes(normalize(k)));
+
+      const tagCol      = findCol('tag', 'asset_tag', 'code', 'reference');
+      const typeCol     = findCol('type', 'categorie');
+      const brandCol    = findCol('marque', 'brand', 'fabricant');
+      const modelCol    = findCol('modele', 'modèle', 'model');
+      const statusCol   = findCol('statut', 'status');
+      const locationCol = findCol('emplacement', 'location');
+      const assignedCol = findCol('affecte a', 'affecté à', 'assigned_to', 'utilisateur');
+      const serialCol   = findCol('numero de serie', 'numéro de série', 'serial_number', 'serial', 'sn');
+      const deptCol     = findCol('departement', 'department');
+      const officeCol   = findCol('bureau', 'office');
+      const purchaseCol = findCol('date achat', 'date d\'achat', 'purchase_date');
+      const warrantyCol = findCol('garantie', 'warranty_end', 'date fin garantie');
+
+      const assetTag     = row[tagCol]?.toString().trim();
+      const type         = row[typeCol]?.toString().trim();
+      const brand        = row[brandCol]?.toString().trim();
+      const model        = row[modelCol]?.toString().trim();
+      const statusTxt    = normalize(row[statusCol]?.toString());
+      const location     = row[locationCol]?.toString().trim();
+      const assignedTxt  = row[assignedCol]?.toString().trim();
+      const serialNumber = row[serialCol]?.toString().trim();
+      const department   = row[deptCol]?.toString().trim();
+      const office       = row[officeCol]?.toString().trim();
+      const purchaseTxt  = row[purchaseCol]?.toString().trim();
+      const warrantyTxt  = row[warrantyCol]?.toString().trim();
+
+      if (!assetTag || !type || !brand || !model) {
+        results.errors.push({ ligne: i + 2, tag: assetTag || '—', raison: 'Tag, type, marque et modèle sont obligatoires.' });
+        continue;
+      }
+
+      const { rows: existing } = await pool.query('SELECT id FROM assets WHERE asset_tag = $1', [assetTag]);
+      if (existing[0]) {
+        results.skipped.push({ ligne: i + 2, tag: assetTag, raison: 'Tag déjà existant.' });
+        continue;
+      }
+
+      const status = STATUS_MAP[statusTxt] || 'En service';
+
+      let assignedTo = null;
+      if (assignedTxt) {
+        const { rows: userRows } = await pool.query(
+          `SELECT id FROM users WHERE username ILIKE $1 OR email ILIKE $1 LIMIT 1`, [assignedTxt]
+        );
+        if (userRows[0]) assignedTo = userRows[0].id;
+      }
+
+      const parseDate = (txt) => {
+        if (!txt) return null;
+        const d = new Date(txt);
+        return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0];
+      };
+
+      const purchaseDate = parseDate(purchaseTxt);
+      const warrantyEnd  = parseDate(warrantyTxt);
+
+      const { rows: created } = await pool.query(
+        `INSERT INTO assets (asset_tag, type, brand, model, status, location, assigned_to, serial_number, department, office, purchase_date, warranty_end, assigned_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7::integer, $8, $9, $10, $11, $12, CASE WHEN $7::integer IS NOT NULL THEN NOW() ELSE NULL END)
+         RETURNING *`,
+        [assetTag, type, brand, model, status, location || null, assignedTo, serialNumber || null, department || null, office || null, purchaseDate, warrantyEnd]
+      );
+
+      await pool.query(`INSERT INTO asset_history (asset_id, action_type, action) VALUES ($1, 'created', $2)`,
+        [created[0].id, `Équipement ${assetTag} (${brand} ${model}) importé depuis Excel`]);
+
+      if (assignedTo) {
+        const { rows: userRows } = await pool.query('SELECT username FROM users WHERE id = $1', [assignedTo]);
+        await pool.query(`INSERT INTO asset_history (asset_id, action_type, action, new_value) VALUES ($1, 'assigned', $2, $3)`,
+          [created[0].id, `Affecté à ${userRows[0]?.username || assignedTxt}`, String(assignedTo)]);
+      }
+
+      results.created.push({ ligne: i + 2, tag: assetTag, type, brand, model, status });
+    }
+
+    return res.json({
+      success: true,
+      message: `Import terminé : ${results.created.length} créé(s), ${results.skipped.length} ignoré(s), ${results.errors.length} erreur(s).`,
+      results,
+    });
+  } catch (err) {
+    console.error('[importAssetsFromExcel]', err.message);
+    return res.status(500).json({ success: false, message: 'Erreur lors du traitement du fichier.' });
   }
 }

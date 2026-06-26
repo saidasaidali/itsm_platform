@@ -64,16 +64,6 @@ export const createTicket = async (ticket) => {
   }
 }
 
-export const updateTicket = async (id, updates) => {
-  const data = await api.put(`/api/tickets/${id}`, {
-    title:       updates.title,
-    description: updates.description,
-    priority:    updates.priority,
-    category:    updates.category,
-  })
-  return data.data
-}
-
 export const updateTicketStatus = async (id, status) => {
   const data = await api.patch(`/api/tickets/${id}/status`, { status })
   return data

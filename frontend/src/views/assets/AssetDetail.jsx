@@ -13,18 +13,20 @@ import CIcon from '@coreui/icons-react'
 import {
   cilCheckCircle, cilUser, cilLockUnlocked, cilLoopCircular,
   cilPencil, cilClipboard, cilLink, cilWarning, cilTrash,
+  cilQrCode, cilPrint,
 } from '@coreui/icons'
 import { getAssetById, assignAsset, deleteAsset } from '../../services/assetService'
 import { getUsers } from '../../services/userService'
 import { getTicketsByAsset } from '../../services/ticketService'
 import { getAssetTwin } from '../../services/smartCmdbService'
+import { generateQrCode } from '../../services/qrCodeService'
 import api from '../../services/api'
 
 const STATUS_COLORS = {
-  'En service':    'success',
-  'En panne':      'danger',
-  'En maintenance':'warning',
-  'Retiré':        'dark',
+  'En service':     'success',
+  'En panne':       'danger',
+  'En maintenance': 'warning',
+  'Retiré':         'dark',
 }
 
 const ACTION_ICONS = {
@@ -38,95 +40,15 @@ const ACTION_ICONS = {
 
 const WARRANTY_DAYS_ALERT = 30
 
-const AssetDetail = () => {
-  const { assetId } = useParams()
-  const navigate    = useNavigate()
-  const { t }       = useTranslation()
-  const { currentUser } = useContext(AuthContext)
-  const role    = currentUser?.role
-  const toaster = useRef()
-
-  const [asset,       setAsset]       = useState(null)
-  const [loading,     setLoading]     = useState(true)
-  const [error,       setError]       = useState('')
-  const [toast,       addToast]       = useState(0)
-  const [users,       setUsers]       = useState([])
-  const [tickets,     setTickets]     = useState([])
-  const [reliability, setReliability] = useState(null)
-  const [assignModal, setAssignModal] = useState(false)
-  const [assignForm,  setAssignForm]  = useState({ userId: '', department: '', office: '' })
-  const [twin,        setTwin]        = useState(null)
-  const [twinLoading, setTwinLoading] = useState(false)
-  const [deleteModal, setDeleteModal] = useState(false)
-  const [deleteLoading, setDeleteLoading] = useState(false)
-
-  const showToast = (message, color = 'danger') => {
-    addToast(
-      <CToast color={color} autohide delay={4000}>
-        <CToastHeader closeButton>
-          <strong className="me-auto">{t('asset_detail.toast_title')}</strong>
-        </CToastHeader>
-        <CToastBody className={color === 'danger' ? 'text-white' : ''}>
-          {message}
-        </CToastBody>
-      </CToast>
-    )
-  }
-
-  // ── Charger les tickets et calculer la fiabilité ──────────────
-  const fetchTickets = useCallback(async () => {
-    try {
-      const data = await getTicketsByAsset(assetId)
-      setTickets(data)
-
-      const sixMonthsAgo = new Date(Date.now() - 6 * 30 * 24 * 3600 * 1000)
-      const pannes6mois = data.filter(
-        (tk) => tk.category === 'Matériel' && new Date(tk.createdAt) > sixMonthsAgo
-      ).length
-
-      setReliability({
-        total:      data.length,
-        pannes6mois,
-        alerte:     pannes6mois >= 3,
-      })
-    } catch (err) {
-      console.error('[fetchTickets]', err)
-    }
-  }, [assetId])
-
-  // ── Charger l'équipement ──────────────────────────────────────
-  const fetchAsset = useCallback(async () => {
-    try {
-      const a = await getAssetById(assetId)
-      setAsset(a)
-    } catch {
-      setError(t('asset_detail.load_error'))
-    } finally {
-      setLoading(false)
-    }
-  }, [assetId, t])
-
-  // ── Charger le Digital Twin (uniquement pour les ordinateurs) ──
-  const fetchTwin = useCallback(async () => {
-    setTwinLoading(true)
-    try {
-      const data = await getAssetTwin(assetId)
-      setTwin(data)
-    } catch (err) {
-      console.error('[fetchTwin]', err)
-    } finally {
-      setTwinLoading(false)
-    }
-  }, [assetId])
-
- // ── Composant Risk Score ──────────────────────────────────────────────────────
+// ── Risk Score Widget ─────────────────────────────────────────────────────────
 const RiskScoreWidget = ({ assetId }) => {
   const [prediction, setPrediction] = useState(null)
   const [loading, setLoading]       = useState(true)
 
   useEffect(() => {
+    if (!assetId) return
     api.get(`/api/assets/${assetId}/ml-prediction`)
-      .then((data) => setPrediction(data.prediction))
+      .then((res) => setPrediction(res.data?.prediction || res.prediction || null))
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [assetId])
@@ -151,7 +73,6 @@ const RiskScoreWidget = ({ assetId }) => {
 
   return (
     <div>
-      {/* Jauge circulaire simple */}
       <div className="d-flex align-items-center gap-3 mb-3">
         <div style={{
           width: 72, height: 72, borderRadius: '50%',
@@ -169,14 +90,11 @@ const RiskScoreWidget = ({ assetId }) => {
           </div>
         </div>
         <div>
-          <div className="fw-semibold" style={{ color }}>
-            Risque {level}
-          </div>
+          <div className="fw-semibold" style={{ color }}>Risque {level}</div>
           <div className="text-muted small">Score ML : {score}/100</div>
         </div>
       </div>
 
-      {/* Prédiction de panne */}
       {prediction.failure.failure_predicted && (
         <div className="p-2 rounded mb-2"
           style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)' }}>
@@ -187,7 +105,6 @@ const RiskScoreWidget = ({ assetId }) => {
         </div>
       )}
 
-      {/* Anomalie ML */}
       {prediction.anomaly.is_anomaly && (
         <div className="p-2 rounded"
           style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)' }}>
@@ -200,6 +117,90 @@ const RiskScoreWidget = ({ assetId }) => {
     </div>
   )
 }
+
+// ── Composant principal ───────────────────────────────────────────────────────
+const AssetDetail = () => {
+  const { assetId } = useParams()
+  const navigate    = useNavigate()
+  const { t }       = useTranslation()
+  const { currentUser } = useContext(AuthContext)
+  const role    = currentUser?.role
+  const toaster = useRef()
+
+  const [asset,         setAsset]         = useState(null)
+  const [loading,       setLoading]       = useState(true)
+  const [error,         setError]         = useState('')
+  const [toast,         addToast]         = useState(0)
+  const [users,         setUsers]         = useState([])
+  const [tickets,       setTickets]       = useState([])
+  const [reliability,   setReliability]   = useState(null)
+  const [assignModal,   setAssignModal]   = useState(false)
+  const [assignForm,    setAssignForm]    = useState({ userId: '', department: '', office: '' })
+  const [twin,          setTwin]          = useState(null)
+  const [twinLoading,   setTwinLoading]   = useState(false)
+  const [deleteModal,   setDeleteModal]   = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [qrModal,       setQrModal]       = useState(false)
+  const [qrData,        setQrData]        = useState(null)
+  const [qrLoading,     setQrLoading]     = useState(false)
+  const [qrError,       setQrError]       = useState('')
+
+  const showToast = (message, color = 'danger') => {
+    addToast(
+      <CToast color={color} autohide delay={4000}>
+        <CToastHeader closeButton>
+          <strong className="me-auto">{t('asset_detail.toast_title')}</strong>
+        </CToastHeader>
+        <CToastBody className={color === 'danger' ? 'text-white' : ''}>
+          {message}
+        </CToastBody>
+      </CToast>
+    )
+  }
+
+  // ── Tickets ───────────────────────────────────────────────────
+  const fetchTickets = useCallback(async () => {
+    if (!assetId) return
+    try {
+      const data = await getTicketsByAsset(assetId)
+      setTickets(data)
+      const sixMonthsAgo = new Date(Date.now() - 6 * 30 * 24 * 3600 * 1000)
+      const pannes6mois = data.filter(
+        (tk) => tk.category === 'Matériel' && new Date(tk.createdAt) > sixMonthsAgo
+      ).length
+      setReliability({ total: data.length, pannes6mois, alerte: pannes6mois >= 3 })
+    } catch (err) {
+      console.error('[fetchTickets]', err)
+    }
+  }, [assetId])
+
+  // ── Asset ─────────────────────────────────────────────────────
+  const fetchAsset = useCallback(async () => {
+    if (!assetId) return
+    try {
+      const a = await getAssetById(assetId)
+      setAsset(a)
+    } catch {
+      setError(t('asset_detail.load_error'))
+    } finally {
+      setLoading(false)
+    }
+  }, [assetId, t])
+
+  // ── Digital Twin ──────────────────────────────────────────────
+  const fetchTwin = useCallback(async () => {
+    if (!assetId) return
+    setTwinLoading(true)
+    try {
+      const data = await getAssetTwin(assetId)
+      setTwin(data)
+    } catch (err) {
+      console.error('[fetchTwin]', err)
+    } finally {
+      setTwinLoading(false)
+    }
+  }, [assetId])
+
   // ── Chargement initial ────────────────────────────────────────
   useEffect(() => {
     fetchAsset()
@@ -210,11 +211,8 @@ const RiskScoreWidget = ({ assetId }) => {
     if (role === 'Admin') getUsers().then(setUsers).catch(console.error)
   }, [role])
 
-  // Charger le twin seulement une fois qu'on sait que c'est un ordinateur
   useEffect(() => {
-    if (asset?.type === 'Ordinateur') {
-      fetchTwin()
-    }
+    if (asset?.type === 'Ordinateur') fetchTwin()
   }, [asset?.type, fetchTwin])
 
   // ── Affectation ───────────────────────────────────────────────
@@ -255,13 +253,62 @@ const RiskScoreWidget = ({ assetId }) => {
     }
   }
 
+  // ── Génération QR Code ────────────────────────────────────────
+  const handleGenerateQr = async () => {
+    // Vérification assetId avant tout appel réseau
+    if (!assetId) {
+      showToast('Identifiant équipement manquant.')
+      return
+    }
+
+    setQrLoading(true)
+    setQrError('')
+    setQrData(null)
+
+    try {
+      const data = await generateQrCode(assetId)
+
+      // data = { token, url, qrSvg } retourné par le service frontend
+      if (!data || !data.qrSvg) {
+        setQrError('Le serveur n\'a pas retourné de QR Code.')
+        setQrModal(true)
+        return
+      }
+
+      setQrData(data)
+      setQrModal(true)
+    } catch (e) {
+      const status = e.response?.status
+      const msg    = e.response?.data?.message || e.message || 'Erreur lors de la génération du QR Code'
+
+      if (status === 401) {
+        showToast('Session expirée, veuillez vous reconnecter.')
+        navigate('/login')
+        return
+      }
+      if (status === 403) {
+        showToast('Vous n\'avez pas les droits pour générer un QR Code.')
+        return
+      }
+      if (status === 404) {
+        showToast('Équipement introuvable.')
+        return
+      }
+
+      setQrError(msg)
+      setQrModal(true)
+    } finally {
+      setQrLoading(false)
+    }
+  }
+
   // ── Calcul garantie ───────────────────────────────────────────
   const warrantyDaysLeft = asset?.warrantyEnd
     ? Math.ceil((new Date(asset.warrantyEnd) - new Date()) / (1000 * 60 * 60 * 24))
     : null
 
-  const translateStatus = (status) => t(`assets.status.${status}`, { defaultValue: status })
-  const translateRelation = (type) => t(`relation_labels.${type}`, { defaultValue: type })
+  const translateStatus   = (s) => t(`assets.status.${s}`,   { defaultValue: s })
+  const translateRelation = (r) => t(`relation_labels.${r}`,  { defaultValue: r })
 
   // ── Rendu ─────────────────────────────────────────────────────
   if (loading) return <div className="text-center p-5"><CSpinner /></div>
@@ -272,22 +319,27 @@ const RiskScoreWidget = ({ assetId }) => {
     <>
       <CToaster ref={toaster} push={toast} placement="top-end" />
 
-      {/* ── Alertes garantie ── */}
+      {/* Alertes garantie */}
       {warrantyDaysLeft !== null && warrantyDaysLeft >= 0 && warrantyDaysLeft <= WARRANTY_DAYS_ALERT && (
         <CAlert color="warning" className="mb-3">
-          {t('asset_detail.warranty_expiring_text')} <strong>{t('asset_detail.warranty_expiring_days', { days: warrantyDaysLeft })}</strong> ({asset.warrantyEnd}).
+          {t('asset_detail.warranty_expiring_text')}{' '}
+          <strong>{t('asset_detail.warranty_expiring_days', { days: warrantyDaysLeft })}</strong>{' '}
+          ({asset.warrantyEnd}).
         </CAlert>
       )}
       {warrantyDaysLeft !== null && warrantyDaysLeft < 0 && (
         <CAlert color="danger" className="mb-3">
-          {t('asset_detail.warranty_expired_text')} <strong>{t('asset_detail.warranty_expired_days', { days: Math.abs(warrantyDaysLeft) })}</strong>.
+          {t('asset_detail.warranty_expired_text')}{' '}
+          <strong>{t('asset_detail.warranty_expired_days', { days: Math.abs(warrantyDaysLeft) })}</strong>.
         </CAlert>
       )}
 
-      {/* ── Alerte fiabilité critique ── */}
+      {/* Alerte fiabilité */}
       {reliability?.alerte && (
         <CAlert color="danger" className="mb-3">
-          {t('asset_detail.reliability_alert_text_start')} <strong>{t('asset_detail.reliability_alert_count', { count: reliability.pannes6mois })}</strong> {t('asset_detail.reliability_alert_text_end')}
+          {t('asset_detail.reliability_alert_text_start')}{' '}
+          <strong>{t('asset_detail.reliability_alert_count', { count: reliability.pannes6mois })}</strong>{' '}
+          {t('asset_detail.reliability_alert_text_end')}
         </CAlert>
       )}
 
@@ -317,8 +369,11 @@ const RiskScoreWidget = ({ assetId }) => {
             <CCardBody>
               <CRow>
                 <CCol md={6}>
-                  <h6 className="text-muted text-uppercase small mb-3">{t('asset_detail.section_identification')}</h6>
-                  <p><strong>{t('asset_detail.type')}</strong> {t(`assets.type.${asset.type}`, { defaultValue: asset.type })}</p>
+                  <h6 className="text-muted text-uppercase small mb-3">
+                    {t('asset_detail.section_identification')}
+                  </h6>
+                  <p><strong>{t('asset_detail.type')}</strong>{' '}
+                    {t(`assets.type.${asset.type}`, { defaultValue: asset.type })}</p>
                   <p><strong>{t('asset_detail.brand')}</strong> {asset.brand}</p>
                   <p><strong>{t('asset_detail.model')}</strong> {asset.model}</p>
                   {asset.serialNumber && (
@@ -327,7 +382,9 @@ const RiskScoreWidget = ({ assetId }) => {
                   <p><strong>{t('asset_detail.location')}</strong> {asset.location || '—'}</p>
                 </CCol>
                 <CCol md={6}>
-                  <h6 className="text-muted text-uppercase small mb-3">{t('asset_detail.section_assignment')}</h6>
+                  <h6 className="text-muted text-uppercase small mb-3">
+                    {t('asset_detail.section_assignment')}
+                  </h6>
                   <p>
                     <strong>{t('asset_detail.user')}</strong>{' '}
                     {asset.assignedTo || <em className="text-muted">{t('asset_detail.unassigned')}</em>}
@@ -340,7 +397,9 @@ const RiskScoreWidget = ({ assetId }) => {
                       <span className="text-info">{asset.assignedAt}</span>
                     </p>
                   )}
-                  <h6 className="text-muted text-uppercase small mb-3 mt-3">{t('asset_detail.section_warranty')}</h6>
+                  <h6 className="text-muted text-uppercase small mb-3 mt-3">
+                    {t('asset_detail.section_warranty')}
+                  </h6>
                   <p><strong>{t('asset_detail.purchase_date')}</strong> {asset.purchaseDate || '—'}</p>
                   <p>
                     <strong>{t('asset_detail.warranty_end')}</strong>{' '}
@@ -356,9 +415,9 @@ const RiskScoreWidget = ({ assetId }) => {
                 </CCol>
               </CRow>
 
-              {/* Actions admin */}
+              {/* Actions Admin */}
               {role === 'Admin' && (
-                <div className="mt-3 pt-3 border-top d-flex gap-2">
+                <div className="mt-3 pt-3 border-top d-flex gap-2 flex-wrap">
                   <CButton color="warning" size="sm"
                     onClick={() => {
                       setAssignForm({
@@ -370,21 +429,36 @@ const RiskScoreWidget = ({ assetId }) => {
                     }}>
                     {asset.assignedTo ? t('asset_detail.btn_reassign') : t('asset_detail.btn_assign')}
                   </CButton>
-                {asset.assignedTo && (
-                  <CButton color="outline-danger" size="sm" onClick={handleDesaffecter}>
-                    {t('asset_detail.btn_unassign')}
+
+                  {asset.assignedTo && (
+                    <CButton color="outline-danger" size="sm" onClick={handleDesaffecter}>
+                      {t('asset_detail.btn_unassign')}
+                    </CButton>
+                  )}
+
+                  <CButton color="danger" size="sm" onClick={() => setDeleteModal(true)}>
+                    <CIcon icon={cilTrash} size="sm" className="me-1" />
+                    {t('asset_detail.btn_delete')}
                   </CButton>
-                )}
-                <CButton color="danger" size="sm" onClick={() => setDeleteModal(true)}>
-                  <CIcon icon={cilTrash} size="sm" className="me-1" />
-                  {t('asset_detail.btn_delete')}
-                </CButton>
-              </div>
-            )}
+
+                  {/* ✅ Bouton QR Code — assetId garanti ici */}
+                  <CButton
+                    color="info"
+                    size="sm"
+                    disabled={qrLoading || !assetId}
+                    onClick={handleGenerateQr}
+                  >
+                    {qrLoading
+                      ? <><CSpinner size="sm" className="me-1" />{t('common.loading')}</>
+                      : <><CIcon icon={cilQrCode} size="sm" className="me-1" />QR Code</>
+                    }
+                  </CButton>
+                </div>
+              )}
             </CCardBody>
           </CCard>
 
-          {/* ── Digital Twin : état en direct (ordinateurs uniquement) ── */}
+          {/* Digital Twin */}
           {asset.type === 'Ordinateur' && (
             <CCard className="mb-4">
               <CCardHeader className="d-flex justify-content-between align-items-center">
@@ -399,9 +473,7 @@ const RiskScoreWidget = ({ assetId }) => {
                 {twinLoading ? (
                   <div className="text-center p-3"><CSpinner size="sm" /></div>
                 ) : !twin?.liveState ? (
-                  <p className="text-muted mb-0">
-                    {t('asset_detail.no_live_data')}
-                  </p>
+                  <p className="text-muted mb-0">{t('asset_detail.no_live_data')}</p>
                 ) : twin.liveState.is_online ? (
                   <>
                     <CRow className="g-3 text-center">
@@ -418,27 +490,29 @@ const RiskScoreWidget = ({ assetId }) => {
                           {twin.liveState.ram_usage ?? '—'}%
                         </div>
                         <div className="text-muted small">
-                          {t('asset_detail.ram')} {twin.liveState.ram_total_mb ? `(${twin.liveState.ram_total_mb} MB)` : ''}
+                          {t('asset_detail.ram')}{' '}
+                          {twin.liveState.ram_total_mb ? `(${twin.liveState.ram_total_mb} MB)` : ''}
                         </div>
                       </CCol>
                       <CCol md={3}>
-                        <div className="fs-4 fw-bold">
-                          {twin.liveState.disk_free_gb ?? '—'} GB
-                        </div>
+                        <div className="fs-4 fw-bold">{twin.liveState.disk_free_gb ?? '—'} GB</div>
                         <div className="text-muted small">
-                          {t('asset_detail.disk_free')} {twin.liveState.disk_total_gb ? `/ ${twin.liveState.disk_total_gb} GB` : ''}
+                          {t('asset_detail.disk_free')}{' '}
+                          {twin.liveState.disk_total_gb ? `/ ${twin.liveState.disk_total_gb} GB` : ''}
                         </div>
                       </CCol>
                       <CCol md={3}>
                         <div className="fs-4 fw-bold">
-                          {twin.liveState.uptime_hours ? Math.round(twin.liveState.uptime_hours / 24) : '—'}j
+                          {twin.liveState.uptime_hours
+                            ? Math.round(twin.liveState.uptime_hours / 24) : '—'}j
                         </div>
                         <div className="text-muted small">{t('asset_detail.uptime')}</div>
                       </CCol>
                     </CRow>
                     {twin.liveState.logged_in_user && (
                       <p className="text-muted small mt-3 mb-0">
-                        {t('asset_detail.active_session')} <strong>{twin.liveState.logged_in_user}</strong>
+                        {t('asset_detail.active_session')}{' '}
+                        <strong>{twin.liveState.logged_in_user}</strong>
                       </p>
                     )}
                   </>
@@ -446,7 +520,9 @@ const RiskScoreWidget = ({ assetId }) => {
                   <p className="text-muted mb-0">
                     {t('asset_detail.offline_msg')}{' '}
                     {twin.liveState.last_checked_at
-                      ? new Date(twin.liveState.last_checked_at).toLocaleString(t('common.locale', { defaultValue: 'fr-FR' }))
+                      ? new Date(twin.liveState.last_checked_at).toLocaleString(
+                          t('common.locale', { defaultValue: 'fr-FR' })
+                        )
                       : '—'}
                   </p>
                 )}
@@ -454,7 +530,7 @@ const RiskScoreWidget = ({ assetId }) => {
             </CCard>
           )}
 
-          {/* ── Équipements liés (relations détectées) ── */}
+          {/* Équipements liés */}
           {twin?.relations?.outgoing?.length > 0 && (
             <CCard className="mb-4">
               <CCardHeader><strong>{t('asset_detail.related_assets_title')}</strong></CCardHeader>
@@ -478,7 +554,7 @@ const RiskScoreWidget = ({ assetId }) => {
             </CCard>
           )}
 
-          {/* ── Indicateur de fiabilité ── */}
+          {/* Fiabilité */}
           {reliability && (
             <CCard className="mb-4">
               <CCardHeader><strong>{t('asset_detail.reliability_title')}</strong></CCardHeader>
@@ -489,8 +565,9 @@ const RiskScoreWidget = ({ assetId }) => {
                     <div className="text-muted small">{t('asset_detail.total_tickets')}</div>
                   </CCol>
                   <CCol md={4}>
-                    <div className={`fs-3 fw-bold ${reliability.pannes6mois >= 3
-                      ? 'text-danger' : reliability.pannes6mois > 0 ? 'text-warning' : 'text-success'}`}>
+                    <div className={`fs-3 fw-bold ${
+                      reliability.pannes6mois >= 3 ? 'text-danger'
+                      : reliability.pannes6mois > 0 ? 'text-warning' : 'text-success'}`}>
                       {reliability.pannes6mois}
                     </div>
                     <div className="text-muted small">{t('asset_detail.failures_6m')}</div>
@@ -508,9 +585,9 @@ const RiskScoreWidget = ({ assetId }) => {
             </CCard>
           )}
 
-          {/* ── Historique des tickets ── */}
+          {/* Historique tickets */}
           <CCard className="mb-4">
-            <CCardHeader className="d-flex justify-content-between align-items-center">
+            <CCardHeader>
               <strong>{t('asset_detail.ticket_history_title', { count: tickets.length })}</strong>
             </CCardHeader>
             <CCardBody className="p-0">
@@ -562,9 +639,9 @@ const RiskScoreWidget = ({ assetId }) => {
           </CCard>
         </CCol>
 
-        {/* ════ Timeline historique ════ */}
+        {/* ════ Timeline ════ */}
         <CCol md={4}>
-          <CCard>
+          <CCard className="mb-4">
             <CCardHeader><strong>{t('asset_detail.lifecycle_title')}</strong></CCardHeader>
             <CCardBody style={{ maxHeight: '700px', overflowY: 'auto' }}>
               {(!asset.history || asset.history.length === 0) && (
@@ -587,7 +664,9 @@ const RiskScoreWidget = ({ assetId }) => {
                         style={{ width: '11px', height: '11px' }} />
                     </div>
                     <small className="text-muted d-block">
-                      {new Date(h.createdAt).toLocaleString(t('common.locale', { defaultValue: 'fr-FR' }))}
+                      {new Date(h.createdAt).toLocaleString(
+                        t('common.locale', { defaultValue: 'fr-FR' })
+                      )}
                     </small>
                     {h.actor && <span className="small fw-semibold">{h.actor}</span>}
                     <div className="small mt-1">{h.action}</div>
@@ -603,10 +682,18 @@ const RiskScoreWidget = ({ assetId }) => {
               </div>
             </CCardBody>
           </CCard>
+
+          {/* Risk Score ML */}
+          <CCard>
+            <CCardHeader><strong>Score de risque ML</strong></CCardHeader>
+            <CCardBody>
+              <RiskScoreWidget assetId={assetId} />
+            </CCardBody>
+          </CCard>
         </CCol>
       </CRow>
 
-      {/* Modal suppression */}
+      {/* ── Modal suppression ── */}
       <CModal visible={deleteModal} onClose={() => setDeleteModal(false)}>
         <CModalHeader>
           <CModalTitle>{t('asset_detail.delete_modal_title')}</CModalTitle>
@@ -625,10 +712,60 @@ const RiskScoreWidget = ({ assetId }) => {
         </CModalFooter>
       </CModal>
 
-      {/* Modal affectation */}
+      {/* ── Modal QR Code ── */}
+      <CModal visible={qrModal} onClose={() => { setQrModal(false); setQrError('') }} size="lg">
+        <CModalHeader>
+          <CModalTitle>
+            <CIcon icon={cilQrCode} className="me-2" />
+            QR Code — {asset?.assetTag}
+          </CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          {/* Erreur de génération */}
+          {qrError && (
+            <CAlert color="danger">
+              <strong>Erreur :</strong> {qrError}
+            </CAlert>
+          )}
+
+          {/* QR Code affiché */}
+          {qrData?.qrSvg && (
+            <div className="text-center">
+              <div
+                className="mb-3 p-4 border rounded d-inline-block"
+                style={{ background: '#fff', maxWidth: 320 }}
+                dangerouslySetInnerHTML={{ __html: qrData.qrSvg }}
+              />
+              <p className="small text-muted mt-2 mb-0">
+                URL encodée :{' '}
+                <code className="text-break">{qrData.url}</code>
+              </p>
+              <p className="small text-muted mt-1">
+                Ce QR Code redirige vers la page de scan sécurisée.
+                Aucune donnée sensible n'est encodée dans le QR.
+              </p>
+            </div>
+          )}
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" onClick={() => { setQrModal(false); setQrError('') }}>
+            Fermer
+          </CButton>
+          {qrData?.url && (
+            <CButton color="primary" onClick={() => window.open(qrData.url, '_blank')}>
+              <CIcon icon={cilPrint} size="sm" className="me-1" />
+              Tester le lien
+            </CButton>
+          )}
+        </CModalFooter>
+      </CModal>
+
+      {/* ── Modal affectation ── */}
       <CModal visible={assignModal} onClose={() => setAssignModal(false)}>
         <CModalHeader>
-          <CModalTitle>{t('asset_detail.modal_assign_title', { tag: asset.assetTag })}</CModalTitle>
+          <CModalTitle>
+            {t('asset_detail.modal_assign_title', { tag: asset.assetTag })}
+          </CModalTitle>
         </CModalHeader>
         <CModalBody>
           <div className="mb-3">

@@ -330,7 +330,7 @@
       "password_generated": "Un mot de passe sécurisé sera généré et envoyé par email.",
       "drag_drop": "Glissez-déposez votre fichier Excel ici",
       "or_click": "ou cliquez pour sélectionner",
-      "file_types": ".xlsx, .xls — 5 Mo maximum",
+      "file_types": ".xlsx, .docx, .pdf, .txt — 5 Mo maximum",
       "created_label": "Compte(s) créé(s)",
       "skipped_label": "Ignoré(s) — email existant",
       "errors_label": "Erreur(s)",
@@ -511,6 +511,16 @@
       "update": "Enregistrer",
       "create": "Créer l'équipement"
     },
+    "import": {
+      "button": "Importer",
+      "title": "Import d'équipements",
+      "subtitle": "Importez une liste d'équipements depuis un fichier Excel",
+      "format_title": "Format attendu du fichier Excel",
+      "format_desc": "Le fichier peut contenir les colonnes suivantes (dans n'importe quel ordre, insensible à la casse, FR/EN) :",
+      "columns_info": "Les colonnes",
+      "created_title": "Équipements créés ({{count}})",
+      "view_assets": "Voir la liste des équipements"
+    },
     "sections": {
       "identification": "Identification",
       "assignment": "Assignation",
@@ -553,6 +563,34 @@
       "update_btn": "Mettre à jour",
       "publish_btn": "Publier l'article",
       "cancel_btn": "Annuler"
+    },
+    "import_articles": {
+      "button": "Importer des articles",
+      "title": "Import d'articles",
+      "subtitle": "Importez plusieurs articles depuis un fichier Excel",
+      "format_title": "Format attendu du fichier Excel",
+      "format_desc": "Le fichier doit contenir les colonnes suivantes (dans n'importe quel ordre, insensible à la casse) :",
+      "optional_fields": "Champs optionnels :",
+      "categories_accepted": "Catégories acceptées :",
+      "drag_drop": "Glissez-déposez votre fichier Excel ici",
+      "or_click": "ou cliquez pour sélectionner",
+      "file_types": ".xlsx, .xls — 5 Mo maximum",
+      "created_label": "Article(s) créé(s)",
+      "skipped_label": "Ignoré(s)",
+      "errors_label": "Erreur(s)",
+      "created_title": "Articles créés ({{count}})",
+      "view_articles": "Voir la liste des articles",
+      "new_import": "Nouvel import",
+      "invalid_format": "Format invalide. Utilisez un fichier .xlsx ou .xls.",
+      "import_error": "Erreur lors de l'import.",
+      "importing": "Import en cours...",
+      "launch_import": "Lancer l'import",
+      "table": {
+        "row": "Ligne",
+        "title": "Titre",
+        "category": "Catégorie",
+        "reason": "Raison"
+      }
     }
   },
   "notifications": {
@@ -671,6 +709,31 @@
     "selected": "Sélectionné",
     "no_recommendation": "Aucune recommandation disponible pour cette catégorie."
   },
+  "sentiment": {
+    "title": "Analyse de sentiment",
+    "neutre": "Neutre",
+    "positif": "Positif",
+    "negatif": "Négatif",
+    "legerement_negatif": "Légèrement négatif",
+    "score": "Score",
+    "intensity": "Intensité",
+    "emotions": "Émotions détectées",
+    "frustration": "Frustration",
+    "urgence": "Urgence",
+    "insatisfaction": "Insatisfaction",
+    "critical": "Critique",
+    "not_critical": "Non critique",
+    "ticket_sentiment": "Sentiment du ticket",
+    "comment_sentiment": "Sentiment du commentaire",
+    "critical_tickets": "Tickets critiques",
+    "no_critical_tickets": "Aucun ticket critique",
+    "alert_title": "Alerte sentiment",
+    "alert_frustration": "Frustration détectée",
+    "alert_urgence": "Urgence détectée",
+    "alert_insatisfaction": "Insatisfaction détectée",
+    "alert_critical": "Ticket critique",
+    "details": "Détails"
+  },
   "ticket_detail": {
     "load_error": "Erreur lors du chargement du ticket.",
     "status_updated": "Statut mis à jour : {{status}}",
@@ -763,6 +826,7 @@
     "assign_updated": "Affectation mise à jour.",
     "unassign_success": "Équipement désaffecté.",
     "error": "Erreur",
+    "qr_generate_error": "Erreur lors de la génération du QR Code",
     "warranty_expiring": "La garantie expire dans <1>{{days}} jour(s)</1> ({{date}}).",
     "warranty_expiring_text": "La garantie expire dans",
     "warranty_expiring_days": "{{days}} jour(s)",
@@ -915,15 +979,6 @@
       "saving": "Enregistrement..."
     }
   },
-  "chatbot": {
-    "title": "Assistant technique",
-    "subtitle": "Base de connaissances DRESI",
-    "welcome": "Bonjour, je suis l'assistant technique DRESI. Posez-moi une question sur un problème informatique et je rechercherai dans la base de connaissances.",
-    "placeholder": "Décrivez votre problème...",
-    "related_articles": "Articles associés",
-    "error": "Une erreur est survenue. Veuillez réessayer.",
-    "button_title": "Assistant technique"
-  },
   "errors": {
     "page404": {
       "title": "Oups ! Page introuvable.",
@@ -1027,5 +1082,85 @@
     "uses_printer": "Imprimante",
     "same_subnet": "Même sous-réseau",
     "same_department": "Même direction"
+  },
+  "qr": {
+    "scan": {
+      "title": "Scan QR Code",
+      "subtitle": "Équipement détecté",
+      "actions": "Actions disponibles",
+      "view_details": "Voir les détails",
+      "view_details_desc": "Consulter la fiche complète",
+      "report_problem": "Signaler un problème",
+      "report_problem_desc": "Créer un ticket de panne",
+      "create_ticket": "Créer un ticket",
+      "create_ticket_desc": "Nouvelle demande d'intervention",
+      "chatbot": "Assistant virtuel",
+      "chatbot_desc": "Obtenir de l'aide",
+      "scanned_count": "Scanné {{count}} fois",
+      "unauthorized": "Accès non autorisé. Vous n'avez pas les permissions nécessaires pour accéder à cette ressource."
+    }
+  },
+  "print_qr": {
+    "title": "Impression des QR Codes",
+    "filters": "Filtres",
+    "location": "Salle",
+    "department": "Département",
+    "type": "Type d'équipement",
+    "all_locations": "Toutes les salles",
+    "all_departments": "Tous les départements",
+    "all_types": "Tous les types",
+    "reset_filters": "Réinitialiser les filtres",
+    "deselect_all": "Désélectionner tout",
+    "selected_count": "équipement(s) sélectionné(s)",
+    "labels_count": "étiquette(s)",
+    "generate_qr": "Générer les QR Codes",
+    "generating": "Génération...",
+    "preview_title": "Aperçu des équipements",
+    "no_assets": "Aucun équipement ne correspond aux filtres sélectionnés.",
+    "load_error": "Erreur lors du chargement des équipements",
+    "generate_error": "Erreur lors de la génération des QR Codes",
+    "no_qr_generated": "Aucun QR Code n'a pu être généré.",
+    "print_title": "QR Codes des Équipements",
+    "print_generated": "Généré le",
+    "print_equipments": "équipement(s)",
+    "print_footer": "Plateforme ITSM DRESI - Généré automatiquement",
+    "print_button": "Imprimer",
+    "close_button": "Fermer",
+    "browser_blocked": "Le navigateur a bloqué l'ouverture de la fenêtre. Autorisez les popups pour ce site.",
+    "refresh": "Actualiser",
+    "select_hint": "Cochez des équipements pour une sélection partielle, ou imprimez tout.",
+    "selected_hint": "{{count}} équipement(s) coché(s) seront imprimés.",
+    "print_selected": "Imprimer les {{count}} sélectionné(s)",
+    "print_all": "Imprimer tout ({{count}})",
+    "table_headers": {
+      "tag": "Tag",
+      "type": "Type",
+      "brand_model": "Marque / Modèle",
+      "location": "Salle",
+      "department": "Département",
+      "status": "Statut"
+    },
+    "select_all_title": "Tout sélectionner / désélectionner",
+    "loading": "Chargement des équipements..."
+  },
+  "chatbot": {
+    "title": "Assistant technique",
+    "subtitle": "Base de connaissances DRESI",
+    "welcome": "Bonjour, je suis l'assistant technique DRESI. Posez-moi une question sur un problème informatique et je rechercherai dans la base de connaissances.",
+    "placeholder": "Décrivez votre problème...",
+    "related_articles": "Articles associés",
+    "error": "Une erreur est survenue. Veuillez réessayer.",
+    "voice_error": "Erreur lors du traitement vocal. Veuillez réessayer.",
+    "button_title": "Assistant technique",
+    "start_recording": "Démarrer l'enregistrement vocal",
+    "stop_recording": "Arrêter l'enregistrement",
+    "stop_speaking": "Arrêter la lecture",
+    "click_to_speak": "Cliquez pour écouter la réponse",
+    "widget": {
+      "title": "Assistant ITSM",
+      "placeholder": "Écrivez un message...",
+      "send": "Envoyer",
+      "error": "Désolé, une erreur est survenue."
+    }
   }
 }

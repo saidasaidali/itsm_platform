@@ -21,11 +21,12 @@ router.get('/unread-count', authenticate, getUnreadCount);
 router.put('/read-all', authenticate, markAllRead);
 
 // CRUD notifications
-router.get('/',         authenticate, getNotifications);
+router.get('/', authenticate, getNotifications);
+
+// Créer (Admin) — AVANT les routes /:id pour éviter les conflits
+router.post('/', authenticate, authorize('Admin'), createNotification);
+
 router.put('/:id/read', authenticate, markRead);
 router.delete('/:id',   authenticate, deleteNotification);
-
-// Créer (Admin)
-router.post('/', authenticate, authorize('Admin'), createNotification);
 
 export default router;

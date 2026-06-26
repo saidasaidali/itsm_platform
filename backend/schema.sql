@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict Lt9AMmX6x90TTuZZcwDusQA3eTUyI6wCn1AfCABLcjEDBP9M5M4iZHeZD33SByP
+\restrict zwLarNxS3zAcmvY4GVUO0SN2tdyJAbvWUC7Bd86vdskuBsRhcde8YcvuaKS9fha
 
 -- Dumped from database version 15.17
 -- Dumped by pg_dump version 15.17
@@ -35,6 +35,48 @@ COMMENT ON EXTENSION pgcrypto IS 'cryptographic functions';
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
+
+--
+-- Name: asset_anomalies; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.asset_anomalies (
+    id integer NOT NULL,
+    asset_id integer,
+    anomaly_type character varying(50) NOT NULL,
+    severity character varying(20) DEFAULT 'medium'::character varying NOT NULL,
+    description text NOT NULL,
+    details jsonb,
+    status character varying(20) DEFAULT 'open'::character varying NOT NULL,
+    detected_at timestamp without time zone DEFAULT now(),
+    resolved_at timestamp without time zone,
+    resolved_by integer
+);
+
+
+ALTER TABLE public.asset_anomalies OWNER TO postgres;
+
+--
+-- Name: asset_anomalies_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.asset_anomalies_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.asset_anomalies_id_seq OWNER TO postgres;
+
+--
+-- Name: asset_anomalies_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.asset_anomalies_id_seq OWNED BY public.asset_anomalies.id;
+
 
 --
 -- Name: asset_assignments; Type: TABLE; Schema: public; Owner: postgres
@@ -114,6 +156,87 @@ ALTER SEQUENCE public.asset_history_id_seq OWNED BY public.asset_history.id;
 
 
 --
+-- Name: asset_live_state; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.asset_live_state (
+    id integer NOT NULL,
+    asset_id integer NOT NULL,
+    is_online boolean DEFAULT false,
+    cpu_usage numeric(5,2),
+    ram_usage numeric(5,2),
+    ram_total_mb integer,
+    disk_free_gb numeric(8,2),
+    disk_total_gb numeric(8,2),
+    uptime_hours numeric(10,2),
+    logged_in_user character varying(100),
+    last_checked_at timestamp without time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.asset_live_state OWNER TO postgres;
+
+--
+-- Name: asset_live_state_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.asset_live_state_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.asset_live_state_id_seq OWNER TO postgres;
+
+--
+-- Name: asset_live_state_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.asset_live_state_id_seq OWNED BY public.asset_live_state.id;
+
+
+--
+-- Name: asset_relations; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.asset_relations (
+    id integer NOT NULL,
+    source_asset_id integer NOT NULL,
+    target_asset_id integer NOT NULL,
+    relation_type character varying(50) NOT NULL,
+    detected_at timestamp without time zone DEFAULT now(),
+    confidence character varying(20) DEFAULT 'auto'::character varying
+);
+
+
+ALTER TABLE public.asset_relations OWNER TO postgres;
+
+--
+-- Name: asset_relations_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.asset_relations_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.asset_relations_id_seq OWNER TO postgres;
+
+--
+-- Name: asset_relations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.asset_relations_id_seq OWNED BY public.asset_relations.id;
+
+
+--
 -- Name: assets; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -142,6 +265,7 @@ CREATE TABLE public.assets (
     updated_at timestamp without time zone DEFAULT now(),
     last_seen_at timestamp without time zone,
     discovery_method character varying(50),
+    qr_token character varying(64) DEFAULT NULL::character varying,
     CONSTRAINT assets_status_check CHECK (((status)::text = ANY ((ARRAY['En service'::character varying, 'En panne'::character varying, 'Hors service'::character varying, 'En stock'::character varying, 'En maintenance'::character varying, 'Retir├®'::character varying])::text[])))
 );
 
@@ -167,6 +291,19 @@ CREATE TABLE public.tickets (
     resolved_at timestamp without time zone,
     asset_id integer,
     sla_notified boolean DEFAULT false,
+    is_auto_generated boolean DEFAULT false,
+    auto_trigger_type character varying(50),
+    remote_session_id character varying(255),
+    remote_session_tool character varying(50),
+    remote_session_url text,
+    remote_session_at timestamp without time zone,
+    remote_session_by integer,
+    sentiment character varying(20) DEFAULT 'neutre'::character varying,
+    sentiment_score integer DEFAULT 0,
+    sentiment_emotions jsonb DEFAULT '[]'::jsonb,
+    sentiment_intensity integer DEFAULT 0,
+    sentiment_is_critical boolean DEFAULT false,
+    sentiment_analyzed_at timestamp without time zone,
     CONSTRAINT tickets_status_check CHECK (((status)::text = ANY ((ARRAY['Nouveau'::character varying, 'Assign├®'::character varying, 'En cours'::character varying, 'En attente'::character varying, 'R├®solu'::character varying, 'Cl├┤tur├®'::character varying, 'Rouvert'::character varying])::text[])))
 );
 
@@ -195,6 +332,20 @@ CREATE VIEW public.asset_reliability AS
 
 
 ALTER TABLE public.asset_reliability OWNER TO postgres;
+
+--
+-- Name: asset_risk_scores; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.asset_risk_scores (
+    asset_id integer NOT NULL,
+    risk_score numeric(5,1) DEFAULT 0 NOT NULL,
+    risk_level character varying(20) DEFAULT 'faible'::character varying NOT NULL,
+    computed_at timestamp without time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.asset_risk_scores OWNER TO postgres;
 
 --
 -- Name: assets_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -257,6 +408,85 @@ ALTER SEQUENCE public.audit_logs_id_seq OWNED BY public.audit_logs.id;
 
 
 --
+-- Name: auto_ticket_cooldown; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.auto_ticket_cooldown (
+    id integer NOT NULL,
+    asset_id integer NOT NULL,
+    trigger_type character varying(50) NOT NULL,
+    last_ticket_id integer,
+    created_at timestamp without time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.auto_ticket_cooldown OWNER TO postgres;
+
+--
+-- Name: auto_ticket_cooldown_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.auto_ticket_cooldown_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.auto_ticket_cooldown_id_seq OWNER TO postgres;
+
+--
+-- Name: auto_ticket_cooldown_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.auto_ticket_cooldown_id_seq OWNED BY public.auto_ticket_cooldown.id;
+
+
+--
+-- Name: chatbot_learned_cases; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.chatbot_learned_cases (
+    id integer NOT NULL,
+    problem_keywords text[] NOT NULL,
+    problem_summary text NOT NULL,
+    solution_text text NOT NULL,
+    source_type character varying(20) DEFAULT 'ticket'::character varying,
+    source_id integer,
+    hit_count integer DEFAULT 0,
+    confidence_score numeric(4,3) DEFAULT 1.0,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.chatbot_learned_cases OWNER TO postgres;
+
+--
+-- Name: chatbot_learned_cases_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.chatbot_learned_cases_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.chatbot_learned_cases_id_seq OWNER TO postgres;
+
+--
+-- Name: chatbot_learned_cases_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.chatbot_learned_cases_id_seq OWNED BY public.chatbot_learned_cases.id;
+
+
+--
 -- Name: chatbot_logs; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -265,7 +495,14 @@ CREATE TABLE public.chatbot_logs (
     user_id integer,
     user_message text,
     bot_response text,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    session_key character varying(64),
+    intent character varying(50),
+    confidence numeric(4,3),
+    ticket_id integer,
+    case_id integer,
+    query text,
+    response text
 );
 
 
@@ -292,6 +529,101 @@ ALTER TABLE public.chatbot_logs_id_seq OWNER TO postgres;
 
 ALTER SEQUENCE public.chatbot_logs_id_seq OWNED BY public.chatbot_logs.id;
 
+
+--
+-- Name: chatbot_messages; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.chatbot_messages (
+    id integer NOT NULL,
+    session_id integer,
+    role character varying(10) NOT NULL,
+    content text NOT NULL,
+    intent character varying(50),
+    confidence numeric(4,3),
+    created_at timestamp without time zone DEFAULT now(),
+    CONSTRAINT chatbot_messages_role_check CHECK (((role)::text = ANY ((ARRAY['user'::character varying, 'bot'::character varying])::text[])))
+);
+
+
+ALTER TABLE public.chatbot_messages OWNER TO postgres;
+
+--
+-- Name: chatbot_messages_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.chatbot_messages_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.chatbot_messages_id_seq OWNER TO postgres;
+
+--
+-- Name: chatbot_messages_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.chatbot_messages_id_seq OWNED BY public.chatbot_messages.id;
+
+
+--
+-- Name: chatbot_sessions; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.chatbot_sessions (
+    id integer NOT NULL,
+    user_id integer,
+    session_key character varying(64) NOT NULL,
+    created_at timestamp without time zone DEFAULT now(),
+    last_active timestamp without time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.chatbot_sessions OWNER TO postgres;
+
+--
+-- Name: chatbot_sessions_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.chatbot_sessions_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.chatbot_sessions_id_seq OWNER TO postgres;
+
+--
+-- Name: chatbot_sessions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.chatbot_sessions_id_seq OWNED BY public.chatbot_sessions.id;
+
+
+--
+-- Name: chatbot_top_cases; Type: VIEW; Schema: public; Owner: postgres
+--
+
+CREATE VIEW public.chatbot_top_cases AS
+ SELECT lc.id,
+    lc.problem_summary,
+    lc.solution_text,
+    lc.source_type,
+    lc.hit_count,
+    lc.confidence_score,
+    lc.created_at
+   FROM public.chatbot_learned_cases lc
+  ORDER BY lc.hit_count DESC, lc.confidence_score DESC;
+
+
+ALTER TABLE public.chatbot_top_cases OWNER TO postgres;
 
 --
 -- Name: knowledge_articles; Type: TABLE; Schema: public; Owner: postgres
@@ -492,6 +824,82 @@ ALTER SEQUENCE public.roles_id_seq OWNED BY public.roles.id;
 
 
 --
+-- Name: scan_history; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.scan_history (
+    id integer NOT NULL,
+    asset_id integer NOT NULL,
+    scanned_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    user_id integer,
+    ip_address character varying(50),
+    user_agent text,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.scan_history OWNER TO postgres;
+
+--
+-- Name: scan_history_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.scan_history_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.scan_history_id_seq OWNER TO postgres;
+
+--
+-- Name: scan_history_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.scan_history_id_seq OWNED BY public.scan_history.id;
+
+
+--
+-- Name: system_settings; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.system_settings (
+    id integer NOT NULL,
+    setting_key character varying(100) NOT NULL,
+    setting_value text,
+    updated_by integer,
+    updated_at timestamp without time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.system_settings OWNER TO postgres;
+
+--
+-- Name: system_settings_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.system_settings_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.system_settings_id_seq OWNER TO postgres;
+
+--
+-- Name: system_settings_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.system_settings_id_seq OWNED BY public.system_settings.id;
+
+
+--
 -- Name: ticket_comments; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -501,7 +909,12 @@ CREATE TABLE public.ticket_comments (
     user_id integer,
     message text NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    is_internal boolean DEFAULT false
+    is_internal boolean DEFAULT false,
+    sentiment character varying(20) DEFAULT 'neutre'::character varying,
+    sentiment_score integer DEFAULT 0,
+    sentiment_emotions jsonb DEFAULT '[]'::jsonb,
+    sentiment_intensity integer DEFAULT 0,
+    sentiment_is_critical boolean DEFAULT false
 );
 
 
@@ -591,6 +1004,46 @@ ALTER SEQUENCE public.tickets_id_seq OWNED BY public.tickets.id;
 
 
 --
+-- Name: unknown_devices; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.unknown_devices (
+    id integer NOT NULL,
+    ip_address character varying(45),
+    mac_address character varying(50),
+    hostname character varying(255),
+    first_seen timestamp without time zone DEFAULT now(),
+    last_seen timestamp without time zone DEFAULT now(),
+    seen_count integer DEFAULT 1,
+    status character varying(20) DEFAULT 'unresolved'::character varying
+);
+
+
+ALTER TABLE public.unknown_devices OWNER TO postgres;
+
+--
+-- Name: unknown_devices_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.unknown_devices_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.unknown_devices_id_seq OWNER TO postgres;
+
+--
+-- Name: unknown_devices_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.unknown_devices_id_seq OWNED BY public.unknown_devices.id;
+
+
+--
 -- Name: users; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -603,6 +1056,11 @@ CREATE TABLE public.users (
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     is_active boolean DEFAULT true,
     status character varying(20) DEFAULT 'active'::character varying NOT NULL,
+    reset_token character varying(255),
+    reset_token_expires timestamp without time zone,
+    language character varying(5) DEFAULT 'fr'::character varying,
+    date_format character varying(20) DEFAULT 'DD/MM/YYYY'::character varying,
+    email_notifications boolean DEFAULT true,
     CONSTRAINT users_status_check CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'pending'::character varying, 'inactive'::character varying])::text[])))
 );
 
@@ -632,6 +1090,13 @@ ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
 
 
 --
+-- Name: asset_anomalies id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.asset_anomalies ALTER COLUMN id SET DEFAULT nextval('public.asset_anomalies_id_seq'::regclass);
+
+
+--
 -- Name: asset_assignments id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -643,6 +1108,20 @@ ALTER TABLE ONLY public.asset_assignments ALTER COLUMN id SET DEFAULT nextval('p
 --
 
 ALTER TABLE ONLY public.asset_history ALTER COLUMN id SET DEFAULT nextval('public.asset_history_id_seq'::regclass);
+
+
+--
+-- Name: asset_live_state id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.asset_live_state ALTER COLUMN id SET DEFAULT nextval('public.asset_live_state_id_seq'::regclass);
+
+
+--
+-- Name: asset_relations id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.asset_relations ALTER COLUMN id SET DEFAULT nextval('public.asset_relations_id_seq'::regclass);
 
 
 --
@@ -660,10 +1139,38 @@ ALTER TABLE ONLY public.audit_logs ALTER COLUMN id SET DEFAULT nextval('public.a
 
 
 --
+-- Name: auto_ticket_cooldown id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.auto_ticket_cooldown ALTER COLUMN id SET DEFAULT nextval('public.auto_ticket_cooldown_id_seq'::regclass);
+
+
+--
+-- Name: chatbot_learned_cases id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.chatbot_learned_cases ALTER COLUMN id SET DEFAULT nextval('public.chatbot_learned_cases_id_seq'::regclass);
+
+
+--
 -- Name: chatbot_logs id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.chatbot_logs ALTER COLUMN id SET DEFAULT nextval('public.chatbot_logs_id_seq'::regclass);
+
+
+--
+-- Name: chatbot_messages id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.chatbot_messages ALTER COLUMN id SET DEFAULT nextval('public.chatbot_messages_id_seq'::regclass);
+
+
+--
+-- Name: chatbot_sessions id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.chatbot_sessions ALTER COLUMN id SET DEFAULT nextval('public.chatbot_sessions_id_seq'::regclass);
 
 
 --
@@ -702,6 +1209,20 @@ ALTER TABLE ONLY public.roles ALTER COLUMN id SET DEFAULT nextval('public.roles_
 
 
 --
+-- Name: scan_history id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.scan_history ALTER COLUMN id SET DEFAULT nextval('public.scan_history_id_seq'::regclass);
+
+
+--
+-- Name: system_settings id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.system_settings ALTER COLUMN id SET DEFAULT nextval('public.system_settings_id_seq'::regclass);
+
+
+--
 -- Name: ticket_comments id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -723,10 +1244,25 @@ ALTER TABLE ONLY public.tickets ALTER COLUMN id SET DEFAULT nextval('public.tick
 
 
 --
+-- Name: unknown_devices id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.unknown_devices ALTER COLUMN id SET DEFAULT nextval('public.unknown_devices_id_seq'::regclass);
+
+
+--
 -- Name: users id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
+
+
+--
+-- Name: asset_anomalies asset_anomalies_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.asset_anomalies
+    ADD CONSTRAINT asset_anomalies_pkey PRIMARY KEY (id);
 
 
 --
@@ -743,6 +1279,46 @@ ALTER TABLE ONLY public.asset_assignments
 
 ALTER TABLE ONLY public.asset_history
     ADD CONSTRAINT asset_history_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: asset_live_state asset_live_state_asset_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.asset_live_state
+    ADD CONSTRAINT asset_live_state_asset_id_key UNIQUE (asset_id);
+
+
+--
+-- Name: asset_live_state asset_live_state_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.asset_live_state
+    ADD CONSTRAINT asset_live_state_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: asset_relations asset_relations_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.asset_relations
+    ADD CONSTRAINT asset_relations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: asset_relations asset_relations_source_asset_id_target_asset_id_relation_ty_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.asset_relations
+    ADD CONSTRAINT asset_relations_source_asset_id_target_asset_id_relation_ty_key UNIQUE (source_asset_id, target_asset_id, relation_type);
+
+
+--
+-- Name: asset_risk_scores asset_risk_scores_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.asset_risk_scores
+    ADD CONSTRAINT asset_risk_scores_pkey PRIMARY KEY (asset_id);
 
 
 --
@@ -770,6 +1346,14 @@ ALTER TABLE ONLY public.assets
 
 
 --
+-- Name: assets assets_qr_token_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.assets
+    ADD CONSTRAINT assets_qr_token_key UNIQUE (qr_token);
+
+
+--
 -- Name: audit_logs audit_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -778,11 +1362,59 @@ ALTER TABLE ONLY public.audit_logs
 
 
 --
+-- Name: auto_ticket_cooldown auto_ticket_cooldown_asset_id_trigger_type_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.auto_ticket_cooldown
+    ADD CONSTRAINT auto_ticket_cooldown_asset_id_trigger_type_key UNIQUE (asset_id, trigger_type);
+
+
+--
+-- Name: auto_ticket_cooldown auto_ticket_cooldown_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.auto_ticket_cooldown
+    ADD CONSTRAINT auto_ticket_cooldown_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: chatbot_learned_cases chatbot_learned_cases_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.chatbot_learned_cases
+    ADD CONSTRAINT chatbot_learned_cases_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: chatbot_logs chatbot_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.chatbot_logs
     ADD CONSTRAINT chatbot_logs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: chatbot_messages chatbot_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.chatbot_messages
+    ADD CONSTRAINT chatbot_messages_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: chatbot_sessions chatbot_sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.chatbot_sessions
+    ADD CONSTRAINT chatbot_sessions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: chatbot_sessions chatbot_sessions_session_key_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.chatbot_sessions
+    ADD CONSTRAINT chatbot_sessions_session_key_key UNIQUE (session_key);
 
 
 --
@@ -842,6 +1474,30 @@ ALTER TABLE ONLY public.roles
 
 
 --
+-- Name: scan_history scan_history_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.scan_history
+    ADD CONSTRAINT scan_history_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: system_settings system_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.system_settings
+    ADD CONSTRAINT system_settings_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: system_settings system_settings_setting_key_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.system_settings
+    ADD CONSTRAINT system_settings_setting_key_key UNIQUE (setting_key);
+
+
+--
 -- Name: ticket_comments ticket_comments_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -863,6 +1519,14 @@ ALTER TABLE ONLY public.ticket_history
 
 ALTER TABLE ONLY public.tickets
     ADD CONSTRAINT tickets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: unknown_devices unknown_devices_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.unknown_devices
+    ADD CONSTRAINT unknown_devices_pkey PRIMARY KEY (id);
 
 
 --
@@ -890,10 +1554,52 @@ ALTER TABLE ONLY public.users
 
 
 --
+-- Name: idx_anomalies_asset; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_anomalies_asset ON public.asset_anomalies USING btree (asset_id);
+
+
+--
+-- Name: idx_anomalies_status; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_anomalies_status ON public.asset_anomalies USING btree (status);
+
+
+--
+-- Name: idx_anomalies_type; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_anomalies_type ON public.asset_anomalies USING btree (anomaly_type);
+
+
+--
 -- Name: idx_asset_history_asset; Type: INDEX; Schema: public; Owner: postgres
 --
 
 CREATE INDEX idx_asset_history_asset ON public.asset_history USING btree (asset_id);
+
+
+--
+-- Name: idx_assets_mac_unique; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX idx_assets_mac_unique ON public.assets USING btree (adresse_mac) WHERE ((adresse_mac IS NOT NULL) AND ((adresse_mac)::text <> ''::text));
+
+
+--
+-- Name: idx_assets_qr_token; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_assets_qr_token ON public.assets USING btree (qr_token);
+
+
+--
+-- Name: idx_assets_serial_unique; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX idx_assets_serial_unique ON public.assets USING btree (serial_number) WHERE ((serial_number IS NOT NULL) AND ((serial_number)::text <> ''::text));
 
 
 --
@@ -908,6 +1614,27 @@ CREATE INDEX idx_assets_status ON public.assets USING btree (status);
 --
 
 CREATE INDEX idx_assets_warranty ON public.assets USING btree (warranty_end);
+
+
+--
+-- Name: idx_chatbot_messages_sess; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_chatbot_messages_sess ON public.chatbot_messages USING btree (session_id);
+
+
+--
+-- Name: idx_chatbot_sessions_key; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_chatbot_sessions_key ON public.chatbot_sessions USING btree (session_key);
+
+
+--
+-- Name: idx_chatbot_sessions_user; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_chatbot_sessions_user ON public.chatbot_sessions USING btree (user_id);
 
 
 --
@@ -932,10 +1659,59 @@ CREATE INDEX idx_knowledge_search ON public.knowledge_articles USING gin (to_tsv
 
 
 --
+-- Name: idx_learned_cases_fts; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_learned_cases_fts ON public.chatbot_learned_cases USING gin (to_tsvector('french'::regconfig, ((problem_summary || ' '::text) || solution_text)));
+
+
+--
+-- Name: idx_learned_cases_keywords; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_learned_cases_keywords ON public.chatbot_learned_cases USING gin (problem_keywords);
+
+
+--
+-- Name: idx_live_state_asset; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_live_state_asset ON public.asset_live_state USING btree (asset_id);
+
+
+--
 -- Name: idx_notifications_user; Type: INDEX; Schema: public; Owner: postgres
 --
 
 CREATE INDEX idx_notifications_user ON public.notifications USING btree (user_id);
+
+
+--
+-- Name: idx_relations_source; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_relations_source ON public.asset_relations USING btree (source_asset_id);
+
+
+--
+-- Name: idx_relations_target; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_relations_target ON public.asset_relations USING btree (target_asset_id);
+
+
+--
+-- Name: idx_scan_history_asset_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_scan_history_asset_id ON public.scan_history USING btree (asset_id);
+
+
+--
+-- Name: idx_scan_history_scanned_at; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_scan_history_scanned_at ON public.scan_history USING btree (scanned_at);
 
 
 --
@@ -981,6 +1757,20 @@ CREATE INDEX idx_tickets_created_by ON public.tickets USING btree (created_by);
 
 
 --
+-- Name: idx_tickets_sentiment; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_tickets_sentiment ON public.tickets USING btree (sentiment, sentiment_score);
+
+
+--
+-- Name: idx_tickets_sentiment_critical; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_tickets_sentiment_critical ON public.tickets USING btree (sentiment_is_critical) WHERE (sentiment_is_critical = true);
+
+
+--
 -- Name: idx_tickets_status; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -988,10 +1778,33 @@ CREATE INDEX idx_tickets_status ON public.tickets USING btree (status);
 
 
 --
+-- Name: idx_unknown_devices_mac; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX idx_unknown_devices_mac ON public.unknown_devices USING btree (mac_address) WHERE (mac_address IS NOT NULL);
+
+
+--
 -- Name: idx_users_status; Type: INDEX; Schema: public; Owner: postgres
 --
 
 CREATE INDEX idx_users_status ON public.users USING btree (status);
+
+
+--
+-- Name: asset_anomalies asset_anomalies_asset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.asset_anomalies
+    ADD CONSTRAINT asset_anomalies_asset_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE CASCADE;
+
+
+--
+-- Name: asset_anomalies asset_anomalies_resolved_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.asset_anomalies
+    ADD CONSTRAINT asset_anomalies_resolved_by_fkey FOREIGN KEY (resolved_by) REFERENCES public.users(id);
 
 
 --
@@ -1027,6 +1840,38 @@ ALTER TABLE ONLY public.asset_history
 
 
 --
+-- Name: asset_live_state asset_live_state_asset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.asset_live_state
+    ADD CONSTRAINT asset_live_state_asset_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE CASCADE;
+
+
+--
+-- Name: asset_relations asset_relations_source_asset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.asset_relations
+    ADD CONSTRAINT asset_relations_source_asset_id_fkey FOREIGN KEY (source_asset_id) REFERENCES public.assets(id) ON DELETE CASCADE;
+
+
+--
+-- Name: asset_relations asset_relations_target_asset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.asset_relations
+    ADD CONSTRAINT asset_relations_target_asset_id_fkey FOREIGN KEY (target_asset_id) REFERENCES public.assets(id) ON DELETE CASCADE;
+
+
+--
+-- Name: asset_risk_scores asset_risk_scores_asset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.asset_risk_scores
+    ADD CONSTRAINT asset_risk_scores_asset_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE CASCADE;
+
+
+--
 -- Name: assets assets_assigned_to_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1043,11 +1888,59 @@ ALTER TABLE ONLY public.audit_logs
 
 
 --
+-- Name: auto_ticket_cooldown auto_ticket_cooldown_asset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.auto_ticket_cooldown
+    ADD CONSTRAINT auto_ticket_cooldown_asset_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE CASCADE;
+
+
+--
+-- Name: auto_ticket_cooldown auto_ticket_cooldown_last_ticket_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.auto_ticket_cooldown
+    ADD CONSTRAINT auto_ticket_cooldown_last_ticket_id_fkey FOREIGN KEY (last_ticket_id) REFERENCES public.tickets(id);
+
+
+--
+-- Name: chatbot_logs chatbot_logs_case_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.chatbot_logs
+    ADD CONSTRAINT chatbot_logs_case_id_fkey FOREIGN KEY (case_id) REFERENCES public.chatbot_learned_cases(id);
+
+
+--
+-- Name: chatbot_logs chatbot_logs_ticket_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.chatbot_logs
+    ADD CONSTRAINT chatbot_logs_ticket_id_fkey FOREIGN KEY (ticket_id) REFERENCES public.tickets(id);
+
+
+--
 -- Name: chatbot_logs chatbot_logs_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.chatbot_logs
     ADD CONSTRAINT chatbot_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: chatbot_messages chatbot_messages_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.chatbot_messages
+    ADD CONSTRAINT chatbot_messages_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.chatbot_sessions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: chatbot_sessions chatbot_sessions_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.chatbot_sessions
+    ADD CONSTRAINT chatbot_sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 
 --
@@ -1096,6 +1989,30 @@ ALTER TABLE ONLY public.notifications
 
 ALTER TABLE ONLY public.notifications
     ADD CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: scan_history scan_history_asset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.scan_history
+    ADD CONSTRAINT scan_history_asset_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE CASCADE;
+
+
+--
+-- Name: scan_history scan_history_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.scan_history
+    ADD CONSTRAINT scan_history_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: system_settings system_settings_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.system_settings
+    ADD CONSTRAINT system_settings_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id);
 
 
 --
@@ -1155,6 +2072,14 @@ ALTER TABLE ONLY public.tickets
 
 
 --
+-- Name: tickets tickets_remote_session_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.tickets
+    ADD CONSTRAINT tickets_remote_session_by_fkey FOREIGN KEY (remote_session_by) REFERENCES public.users(id);
+
+
+--
 -- Name: users users_role_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1166,5 +2091,5 @@ ALTER TABLE ONLY public.users
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Lt9AMmX6x90TTuZZcwDusQA3eTUyI6wCn1AfCABLcjEDBP9M5M4iZHeZD33SByP
+\unrestrict zwLarNxS3zAcmvY4GVUO0SN2tdyJAbvWUC7Bd86vdskuBsRhcde8YcvuaKS9fha
 

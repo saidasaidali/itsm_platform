@@ -60,9 +60,12 @@ const Knowledge = () => {
           <small className="text-muted">{t('knowledge.available_articles', { count: articles.length })}</small>
         </CCol>
         {(role === 'Admin' || role === 'Technicien') && (
-          <CCol xs="auto">
+          <CCol xs="auto" className="d-flex gap-2">
             <CButton color="primary" onClick={() => navigate('/knowledge/new')}>
               {t('knowledge.new_article')}
+            </CButton>
+            <CButton color="info" onClick={() => navigate('/knowledge/import')}>
+              {t('knowledge.import_articles.button')}
             </CButton>
           </CCol>
         )}

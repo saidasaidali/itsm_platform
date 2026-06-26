@@ -49,7 +49,7 @@ async function notifyAdmins(title, message, assetId, severity) {
   const icon = severity === 'critical' ? '🔴' : severity === 'high' ? '🟠' : severity === 'medium' ? '🟡' : '🟢';
   const { rows: admins } = await pool.query(
     `SELECT u.id FROM users u JOIN roles r ON u.role_id = r.id
-     WHERE r.name = 'Admin' AND u.is_active = true`
+      WHERE r.name = 'Admin' AND u.status = 'active'`
   );
   for (const admin of admins) {
     await pool.query(
@@ -107,7 +107,7 @@ export async function detectUnknownDevice(ip, mac, hostname) {
     // Notification globale (pas liée à un asset_id puisqu'il n'existe pas encore)
     const { rows: admins } = await pool.query(
       `SELECT u.id FROM users u JOIN roles r ON u.role_id = r.id
-       WHERE r.name = 'Admin' AND u.is_active = true`
+    WHERE r.name = 'Admin' AND u.status = 'active'`
     );
     for (const admin of admins) {
       await pool.query(
