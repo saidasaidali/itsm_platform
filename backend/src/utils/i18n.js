@@ -75,6 +75,10 @@ const MESSAGES = {
     chatbot_no_results: 'Aucun article de la base de connaissances ne correspond à votre question. Essayez de reformuler, ou créez un ticket si le problème persiste.',
     chatbot_empty_message: 'Message vide.',
     chatbot_too_short: 'Question trop courte. Décrivez votre problème en quelques mots.',
+    report_generated_successfully: 'Rapport généré avec succès.',
+    report_generation_failed: 'Échec de la génération du rapport.',
+    report_not_found: 'Rapport introuvable.',
+    report_deleted_successfully: 'Rapport supprimé avec succès.',
   },
   en: {
     server_error: 'Server error.',
@@ -150,6 +154,10 @@ const MESSAGES = {
     chatbot_no_results: 'No knowledge base article matches your question. Try rephrasing, or create a ticket if the issue persists.',
     chatbot_empty_message: 'Empty message.',
     chatbot_too_short: 'Question too short. Describe your issue in a few words.',
+    report_generated_successfully: 'Report generated successfully.',
+    report_generation_failed: 'Report generation failed.',
+    report_not_found: 'Report not found.',
+    report_deleted_successfully: 'Report deleted successfully.',
   },
   ar: {
     server_error: 'خطأ في الخادم.',
@@ -225,6 +233,10 @@ const MESSAGES = {
     chatbot_no_results: 'لا يوجد مقال في قاعدة المعرفة يطابق سؤالك. حاول إعادة الصياغة، أو أنشئ تذكرة إذا استمرت المشكلة.',
     chatbot_empty_message: 'رسالة فارغة.',
     chatbot_too_short: 'السؤال قصير جداً. صف مشكلتك في بضع كلمات.',
+    report_generated_successfully: 'تم إنشاء التقرير بنجاح.',
+    report_generation_failed: 'فشل في إنشاء التقرير.',
+    report_not_found: 'التقرير غير موجود.',
+    report_deleted_successfully: 'تم حذف التقرير بنجاح.',
   },
 };
 

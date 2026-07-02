@@ -6,44 +6,34 @@ import { isUsernameTaken, isEmailTaken, isValidRole, findUserById, hashPassword 
 import * as emailService from '../services/emailService.js';
 import crypto from 'crypto';
 import * as XLSX from 'xlsx';
+import asyncHandler from '../middlewares/asyncHandler.js';
 
 // ─── GET /api/users (Admin) ───────────────────────────────────────────────────
-export async function getUsers(req, res) {
-  try {
+export const getUsers = asyncHandler(async (req, res) => {
     const { rows } = await pool.query(
       `SELECT u.id, u.username, u.email, u.role_id, u.status, u.created_at, r.name AS role_name
        FROM users u JOIN roles r ON u.role_id = r.id
        ORDER BY u.created_at DESC`
     );
     return res.status(200).json({ success: true, data: rows });
-  } catch (err) {
-    console.error('[getUsers]', err);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 // ─── GET /api/users/:id (Admin) ───────────────────────────────────────────────
-export async function getUserById(req, res) {
+export const getUserById = asyncHandler(async (req, res) => {
   const { id } = req.params;
   if (isNaN(id)) return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
-  try {
-    const user = await findUserById(id);
-    if (!user) return res.status(404).json({ success: false, message: t(req, 'user_not_found') });
-    return res.status(200).json({ success: true, data: user });
-  } catch (err) {
-    console.error('[getUserById]', err);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+  const user = await findUserById(parseInt(id));
+  if (!user) return res.status(404).json({ success: false, message: t(req, 'user_not_found') });
+  return res.status(200).json({ success: true, data: user });
+});
 
 // ─── POST /api/users (Admin) — compte créé directement actif ─────────────────
-export async function createUser(req, res) {
+export const createUser = asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
 
   const { username, email, password, role_id } = req.body;
-  try {
-    if (await isUsernameTaken(username)) return res.status(409).json({ success: false, message: t(req, 'username_taken') });
+  if (await isUsernameTaken(username)) return res.status(409).json({ success: false, message: t(req, 'username_taken') });
     if (await isEmailTaken(email))       return res.status(409).json({ success: false, message: t(req, 'email_taken') });
     if (!(await isValidRole(role_id)))   return res.status(400).json({ success: false, message: t(req, 'invalid_role') });
 
@@ -55,14 +45,10 @@ export async function createUser(req, res) {
       [username, email, hashedPassword, role_id]
     );
     return res.status(201).json({ success: true, message: t(req, 'user_created'), data: rows[0] });
-  } catch (err) {
-    console.error('[createUser]', err);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 // ─── PUT /api/users/:id (Admin) ───────────────────────────────────────────────
-export async function updateUser(req, res) {
+export const updateUser = asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
 
@@ -70,8 +56,7 @@ export async function updateUser(req, res) {
   if (isNaN(id)) return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
 
   const { username, email, password, role_id } = req.body;
-  try {
-    const existing = await findUserById(id);
+  const existing = await findUserById(id);
     if (!existing) return res.status(404).json({ success: false, message: t(req, 'user_not_found') });
 
     if (username && (await isUsernameTaken(username, id))) return res.status(409).json({ success: false, message: t(req, 'username_taken') });
@@ -90,22 +75,17 @@ export async function updateUser(req, res) {
       [username || null, email || null, newPassword, role_id || null, id]
     );
     return res.status(200).json({ success: true, message: t(req, 'user_updated'), data: rows[0] });
-  } catch (err) {
-    console.error('[updateUser]', err);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 // ─── PATCH /api/users/me — Profil personnel (tous rôles) ─────────────────────
-export async function updateOwnProfile(req, res) {
+export const updateOwnProfile = asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
 
   const userId = req.user.id;
   const { username, email, password } = req.body;
 
-  try {
-    const existing = await findUserById(userId);
+  const existing = await findUserById(userId);
     if (!existing) return res.status(404).json({ success: false, message: t(req, 'user_not_found') });
 
     if (username && (await isUsernameTaken(username, userId))) return res.status(409).json({ success: false, message: t(req, 'username_taken') });
@@ -122,22 +102,17 @@ export async function updateOwnProfile(req, res) {
       [username || null, email || null, newPassword, userId]
     );
     return res.status(200).json({ success: true, message: t(req, 'profile_updated'), data: rows[0] });
-  } catch (err) {
-    console.error('[updateOwnProfile]', err);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 // ─── PATCH /api/users/:id/status (Admin) ─────────────────────────────────────
-export async function updateUserStatus(req, res) {
+export const updateUserStatus = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
 
   if (isNaN(id)) return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
   if (parseInt(id) === req.user.id) return res.status(400).json({ success: false, message: t(req, 'cannot_change_own_status') });
 
-  try {
-    const { rows, rowCount } = await pool.query(
+  const { rows, rowCount } = await pool.query(
       `UPDATE users SET status = $1 WHERE id = $2
        RETURNING id, username, email, role_id, status, created_at`,
       [status, id]
@@ -146,20 +121,15 @@ export async function updateUserStatus(req, res) {
 
     const labels = { active: 'activé', inactive: 'désactivé', pending: 'mis en attente' };
     return res.status(200).json({ success: true, message: `Compte ${labels[status]}.`, data: rows[0] });
-  } catch (err) {
-    console.error('[updateUserStatus]', err);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 // ─── DELETE /api/users/:id (Admin) ───────────────────────────────────────────
-export async function deleteUser(req, res) {
+export const deleteUser = asyncHandler(async (req, res) => {
   const { id } = req.params;
   if (isNaN(id)) return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
   if (parseInt(id) === req.user.id) return res.status(400).json({ success: false, message: t(req, 'cannot_delete_self') });
 
-  try {
-    console.log(`[deleteUser] Tentative de suppression de l'utilisateur ID: ${id}`);
+  console.log(`[deleteUser] Tentative de suppression de l'utilisateur ID: ${id}`);
     
     // Vérifier d'abord si l'utilisateur existe
     const { rows: existing } = await pool.query('SELECT id, username, email FROM users WHERE id = $1', [id]);
@@ -207,20 +177,11 @@ export async function deleteUser(req, res) {
     
     console.log(`[deleteUser] Utilisateur ${id} supprimé avec succès`);
     return res.status(200).json({ success: true, message: t(req, 'user_deleted') });
-  } catch (err) {
-    console.error('[deleteUser] Erreur détaillée:', err);
-    return res.status(500).json({ 
-      success: false, 
-      message: t(req, 'server_error'),
-      error: process.env.NODE_ENV === 'development' ? err.message : undefined
-    });
-  }
-}
+});
 
 // ─── GET /api/users/technicians — techniciens actifs uniquement ───────────────
-export async function getActiveTechnicians(req, res) {
-  try {
-    const { rows } = await pool.query(
+export const getActiveTechnicians = asyncHandler(async (req, res) => {
+  const { rows } = await pool.query(
       `SELECT u.id, u.username AS name, u.email,
               r.name AS role,
               COUNT(t.id) AS active_tickets
@@ -234,22 +195,17 @@ export async function getActiveTechnicians(req, res) {
        ORDER BY u.username ASC`
     );
     return res.json({ success: true, data: rows });
-  } catch (err) {
-    console.error('[getActiveTechnicians]', err.message);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 
 
 // ─── POST /api/users/import — Import Excel (Admin) ────────────────────────────
-export async function importUsersFromExcel(req, res) {
+export const importUsersFromExcel = asyncHandler(async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, message: 'Fichier Excel manquant.' });
   }
 
-  try {
-    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+  const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
     const sheet    = workbook.Sheets[workbook.SheetNames[0]];
     const rows     = XLSX.utils.sheet_to_json(sheet, { defval: '' });
 
@@ -357,11 +313,7 @@ export async function importUsersFromExcel(req, res) {
       message: `Import terminé : ${results.created.length} créé(s), ${results.skipped.length} ignoré(s), ${results.errors.length} erreur(s).`,
       results,
     });
-  } catch (err) {
-    console.error('[importUsersFromExcel]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur lors du traitement du fichier.' });
-  }
-}
+});
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function generateSecurePassword() {

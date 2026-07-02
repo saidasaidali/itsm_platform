@@ -48,7 +48,7 @@ export async function findUserByEmailOrUsername(identifier) {
 
 export async function findUserById(id) {
   const { rows } = await pool.query(
-    `SELECT u.id, u.username, u.email, u.role_id, u.status, u.created_at,
+    `SELECT u.id, u.username, u.email, u.password, u.role_id, u.status, u.created_at,
             r.name AS role_name
      FROM users u
      JOIN roles r ON u.role_id = r.id

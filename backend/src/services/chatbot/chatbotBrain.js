@@ -1,79 +1,13 @@
 import pool from '../../db.js';
 import ollama from 'ollama';
 import dotenv from 'dotenv';
+import { INTENTS, normalizeText, classifyCategoryByKeywords, extractKeywords } from '../../utils/nlpUtils.js';
+import { detectIntentWithConfidence } from '../intentService.js';
+import { searchKnowledgeBase } from '../knowledgeBaseSearch.js';
 dotenv.config();
 
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.2';
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
-
-const INTENTS = {
-  GREETING: 'greeting',
-  TICKET_CREATE: 'ticket_create',
-  TICKET_STATUS: 'ticket_status',
-  ASSET_LOCATE: 'asset_locate',
-  ASSET_STATUS: 'asset_status',
-  KB_SEARCH: 'kb_search',
-  PLATFORM_GUIDE: 'platform_guide'
-};
-
-const CATEGORIES = [
-  'Performance', 'Réseau', 'Matériel', 'Logiciel', 'Sécurité', 'Autre'
-];
-
-const normalizeText = (text) => {
-  return text.toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^\w\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-};
-
-const extractKeywords = (text) => {
-  const stopwords = ['le', 'la', 'les', 'un', 'une', 'des', 'du', 'de', 'a', 'et', 'est', 'sont', 'mon', 'ma', 'mes', 'ton', 'ta', 'tes', 'son', 'sa', 'ses'];
-  const words = normalizeText(text).split(' ');
-  return words.filter(w => w.length > 2 && !stopwords.includes(w));
-};
-
-const detectIntent = (text) => {
-  const normalized = normalizeText(text);
-  
-  if (/bonjour|salut|hello|hey|coucou/.test(normalized)) {
-    return { intent: INTENTS.GREETING, confidence: 0.95 };
-  }
-  
-  if (/creer ticket|nouveau ticket|ouvrir ticket|probleme|bug|ne marche pas|panne|erreur/.test(normalized)) {
-    let category = 'Autre';
-    if (/lent|rame|performance/.test(normalized)) category = 'Performance';
-    if (/reseau|wifi|connexion|internet/.test(normalized)) category = 'Réseau';
-    if (/ordinateur|ecran|clavier|souris/.test(normalized)) category = 'Matériel';
-    if (/logiciel|application|app/.test(normalized)) category = 'Logiciel';
-    if (/securite|virus|phishing/.test(normalized)) category = 'Sécurité';
-    return { intent: INTENTS.TICKET_CREATE, confidence: 0.9, category };
-  }
-  
-  if (/etat ticket|status ticket|ou en est mon ticket/.test(normalized)) {
-    return { intent: INTENTS.TICKET_STATUS, confidence: 0.85 };
-  }
-  
-  if (/trouver asset|ou est mon|localiser asset/.test(normalized)) {
-    return { intent: INTENTS.ASSET_LOCATE, confidence: 0.8 };
-  }
-  
-  if (/etat asset|status asset/.test(normalized)) {
-    return { intent: INTENTS.ASSET_STATUS, confidence: 0.8 };
-  }
-  
-  if (/comment utiliser|guide|plateforme|how to|tutoriel/.test(normalized)) {
-    return { intent: INTENTS.PLATFORM_GUIDE, confidence: 0.85 };
-  }
-  
-  if (/rechercher|chercher|documentation|article|base de connaissances/.test(normalized)) {
-    return { intent: INTENTS.KB_SEARCH, confidence: 0.85 };
-  }
-  
-  return { intent: INTENTS.KB_SEARCH, confidence: 0.5 };
-};
 
 const getOrCreateSession = async (sessionKey, userId = null) => {
   let result = await pool.query('SELECT * FROM chatbot_sessions WHERE session_key = $1', [sessionKey]);
@@ -109,15 +43,7 @@ const searchMemory = async (keywords) => {
 };
 
 const searchKB = async (query) => {
-  const result = await pool.query(
-    `SELECT id, title, summary, content 
-     FROM knowledge_articles 
-     WHERE to_tsvector('french', title || ' ' || summary || ' ' || content) @@ plainto_tsquery('french', $1)
-     ORDER BY ts_rank(to_tsvector('french', title || ' ' || summary || ' ' || content), plainto_tsquery('french', $1)) DESC
-     LIMIT 3`,
-    [query]
-  );
-  return result.rows;
+  return await searchKnowledgeBase(query, { language: 'fr', limit: 3 });
 };
 
 const getSessionMessages = async (sessionId) => {
@@ -228,7 +154,7 @@ const learnFromArticle = async (articleId) => {
 
 const processMessage = async (sessionKey, userId, userMessage) => {
   const session = await getOrCreateSession(sessionKey, userId);
-  const { intent, confidence, category } = detectIntent(userMessage);
+  const { intent, confidence, category } = detectIntentWithConfidence(userMessage);
   const keywords = extractKeywords(userMessage);
 
   await saveMessage(session.id, 'user', userMessage, intent, confidence);

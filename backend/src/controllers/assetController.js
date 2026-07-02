@@ -5,7 +5,8 @@ import { t } from '../utils/i18n.js';
 import anomalyDetector from '../services/networkDiscovery/anomalyDetector.js';
 import { getFullPrediction } from '../services/mlService.js';
 import * as XLSX from 'xlsx';
-
+import asyncHandler from '../middlewares/asyncHandler.js';
+import { validateId } from '../utils/validationUtils.js';
 
 // ─── Utilitaire historique ────────────────────────────────────
 async function addHistory(assetId, userId, actionType, action, oldValue = null, newValue = null) {
@@ -17,9 +18,8 @@ async function addHistory(assetId, userId, actionType, action, oldValue = null, 
 }
 
 // ─── GET /api/assets/stats ────────────────────────────────────
-export async function getAssetStats(req, res) {
-  try {
-    const { rows } = await pool.query(`
+export const getAssetStats = asyncHandler(async (req, res) => {
+  const { rows } = await pool.query(`
       SELECT
         COUNT(*)                                                      AS total,
         COUNT(*) FILTER (WHERE status = 'En service')                AS in_service,
@@ -32,16 +32,11 @@ export async function getAssetStats(req, res) {
       FROM assets
     `);
     return res.json({ success: true, data: rows[0] });
-  } catch (err) {
-    console.error('[getAssetStats]', err.message);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 // ─── GET /api/assets ──────────────────────────────────────────
-export async function getAssets(req, res) {
-  try {
-    const { status, type } = req.query;
+export const getAssets = asyncHandler(async (req, res) => {
+  const { status, type } = req.query;
     const params = [];
     let where = 'WHERE 1=1';
 
@@ -64,16 +59,11 @@ export async function getAssets(req, res) {
       params
     );
     return res.json({ success: true, data: rows });
-  } catch (err) {
-    console.error('[getAssets]', err.message);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 // ─── GET /api/assets/warranty-alerts ─────────────────────────
-export async function getWarrantyAlerts(req, res) {
-  try {
-    const { rows } = await pool.query(`
+export const getWarrantyAlerts = asyncHandler(async (req, res) => {
+  const { rows } = await pool.query(`
       SELECT
         a.*,
         u.username AS assigned_to_name,
@@ -86,19 +76,14 @@ export async function getWarrantyAlerts(req, res) {
       ORDER BY COALESCE(a.warranty_end, a.date_fin_garantie) ASC
     `);
     return res.json({ success: true, data: rows });
-  } catch (err) {
-    console.error('[getWarrantyAlerts]', err.message);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 // ─── GET /api/assets/:id ──────────────────────────────────────
-export async function getAssetById(req, res) {
+export const getAssetById = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  if (isNaN(id)) return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
+  if (!validateId(id, req, res)) return;
 
-  try {
-    const { rows } = await pool.query(
+  const { rows } = await pool.query(
       `SELECT a.*, u.username AS assigned_to_name
        FROM assets a
        LEFT JOIN users u ON a.assigned_to = u.id
@@ -129,13 +114,9 @@ export async function getAssetById(req, res) {
     );
 
     return res.json({ success: true, data: { ...rows[0], history, tickets } });
-  } catch (err) {
-    console.error('[getAssetById]', err.message);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 // ─── POST /api/assets ─────────────────────────────────────────
-export async function createAsset(req, res) {
+export const createAsset = asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty())
     return res.status(400).json({ success: false, errors: errors.array() });
@@ -152,8 +133,7 @@ export async function createAsset(req, res) {
   const purchaseDate = purchase_date || null;
   const warrantyEnd  = warranty_end  || null;
 
-  try {
-    const { rows } = await pool.query(
+  const { rows } = await pool.query(
       `INSERT INTO assets
          (asset_tag, type, brand, model, status, location,
           assigned_to, serial_number, department, office,
@@ -195,22 +175,16 @@ export async function createAsset(req, res) {
     }
 
     return res.status(201).json({ success: true, message: t(req, 'asset_created'), data: rows[0] });
-  } catch (err) {
-    if (err.code === '23505')
-      return res.status(409).json({ success: false, message: t(req, 'asset_tag_exists') });
-    console.error('[createAsset]', err.message);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 // ─── PUT /api/assets/:id ──────────────────────────────────────
-export async function updateAsset(req, res) {
+export const updateAsset = asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty())
     return res.status(400).json({ success: false, errors: errors.array() });
 
   const { id } = req.params;
-  if (isNaN(id)) return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
+  if (!validateId(id, req, res)) return;
 
   const {
     asset_tag, type, brand, model, status, location,
@@ -219,8 +193,7 @@ export async function updateAsset(req, res) {
   } = req.body;
   const userId = req.user.id;
 
-  try {
-    const { rows: existing } = await pool.query(
+  const { rows: existing } = await pool.query(
       `SELECT a.*, u.username AS assigned_to_name
        FROM assets a
        LEFT JOIN users u ON a.assigned_to = u.id
@@ -313,21 +286,16 @@ export async function updateAsset(req, res) {
     }
 
     return res.json({ success: true, message: t(req, 'asset_updated'), data: rows[0] });
-  } catch (err) {
-    console.error('[updateAsset]', err.message);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 // ─── PATCH /api/assets/:id/assign ────────────────────────────
-export async function assignAsset(req, res) {
+export const assignAsset = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { user_id, department, office } = req.body;
   const actorId = req.user.id;
-  if (isNaN(id)) return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
+  if (!validateId(id, req, res)) return;
 
-  try {
-    const { rows: assetRows } = await pool.query(
+  const { rows: assetRows } = await pool.query(
       `SELECT a.*, u.username AS assigned_to_name
        FROM assets a
        LEFT JOIN users u ON a.assigned_to = u.id
@@ -377,32 +345,23 @@ export async function assignAsset(req, res) {
     );
 
     return res.json({ success: true, message: action });
-  } catch (err) {
-    console.error('[assignAsset]', err.message);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 // ─── DELETE /api/assets/:id ───────────────────────────────────
-export async function deleteAsset(req, res) {
+export const deleteAsset = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  if (isNaN(id)) return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
+  if (!validateId(id, req, res)) return;
 
-  try {
-    const { rowCount } = await pool.query('DELETE FROM assets WHERE id = $1', [id]);
+  const { rowCount } = await pool.query('DELETE FROM assets WHERE id = $1', [id]);
     if (rowCount === 0)
       return res.status(404).json({ success: false, message: t(req, 'asset_not_found') });
     return res.json({ success: true, message: t(req, 'asset_deleted') });
-  } catch (err) {
-    console.error('[deleteAsset]', err.message);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 
 
 // ─── POST /api/assets/heartbeat — Agent poste Windows ────────
-export async function heartbeat(req, res) {
+export const heartbeat = asyncHandler(async (req, res) => {
   const apiKey = req.headers['x-api-key'];
   if (!apiKey || apiKey !== process.env.ASSET_AGENT_KEY) {
     return res.status(401).json({ success: false, message: t(req, 'not_authorized') });
@@ -417,8 +376,7 @@ export async function heartbeat(req, res) {
     });
   }
 
-  try {
-    const { rows } = await pool.query(
+  const { rows } = await pool.query(
       `SELECT a.*, u.username AS assigned_to_name
        FROM assets a
        LEFT JOIN users u ON a.assigned_to = u.id
@@ -551,18 +509,13 @@ export async function heartbeat(req, res) {
       asset_tag: asset.asset_tag,
       assigned_to: asset.assigned_to_name || null,
     });
-  } catch (err) {
-    console.error('[heartbeat]', err.message);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 
 // GET /api/assets/:id/ml-prediction
-export async function getAssetMLPrediction(req, res) {
+export const getAssetMLPrediction = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  try {
-    const prediction = await getFullPrediction(id);
+  const prediction = await getFullPrediction(id);
     if (!prediction) {
       return res.json({
         success: true,
@@ -571,20 +524,15 @@ export async function getAssetMLPrediction(req, res) {
       });
     }
     return res.json({ success: true, prediction });
-  } catch (err) {
-    console.error('[getAssetMLPrediction]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur.' });
-  }
-}
+});
 
 // ─── POST /api/assets/import — Import Excel (Admin) ────────────────────────────
-export async function importAssetsFromExcel(req, res) {
+export const importAssetsFromExcel = asyncHandler(async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, message: 'Fichier Excel manquant.' });
   }
 
-  try {
-    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+  const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
     const sheet    = workbook.Sheets[workbook.SheetNames[0]];
     const rows     = XLSX.utils.sheet_to_json(sheet, { defval: '' });
 
@@ -689,8 +637,4 @@ export async function importAssetsFromExcel(req, res) {
       message: `Import terminé : ${results.created.length} créé(s), ${results.skipped.length} ignoré(s), ${results.errors.length} erreur(s).`,
       results,
     });
-  } catch (err) {
-    console.error('[importAssetsFromExcel]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur lors du traitement du fichier.' });
-  }
-}
+});

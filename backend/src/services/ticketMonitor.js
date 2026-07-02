@@ -1,5 +1,6 @@
 // src/services/ticketMonitor.js
 import pool from '../db.js';
+import { createNotification } from './notificationService.js';
 
 async function checkUnassignedTickets() {
   try {
@@ -30,14 +31,12 @@ async function checkUnassignedTickets() {
         `, [admin.id, `%#${ticket.id}%`]);
 
         if (existing.length === 0) {
-          await pool.query(`
-            INSERT INTO notifications (title, message, user_id)
-            VALUES ($1, $2, $3)
-          `, [
-            '⚠️ Ticket non assigné',
-            `Le ticket #${ticket.id} "${ticket.title}" n'est pas assigné depuis plus de 2 heures.`,
-            admin.id,
-          ]);
+          await createNotification({
+            title: '⚠️ Ticket non assigné',
+            message: `Le ticket #${ticket.id} "${ticket.title}" n'est pas assigné depuis plus de 2 heures.`,
+            userId: admin.id,
+            ticketId: ticket.id
+          });
         }
       }
     }

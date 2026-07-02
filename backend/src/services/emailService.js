@@ -2,6 +2,7 @@
 import nodemailer from 'nodemailer';
 import pool from '../db.js';
 import { getSettings } from './settingsService.js';
+import { createNotification } from './notificationService.js';
 
 // ── Transporter dynamique ─────────────────────────────────────
 // Reconstruit à partir des settings actuels à chaque appel de getTransporter(),
@@ -122,15 +123,7 @@ function sendMail(to, subject, html) {
 
 // ── Notification système en base ──────────────────────────────
 async function createSystemNotif(userId, title, message, ticketId = null, assetId = null) {
-  try {
-    await pool.query(
-      `INSERT INTO notifications (title, message, user_id, "read", ticket_id, asset_id)
-       VALUES ($1, $2, $3, FALSE, $4, $5)`,
-      [title, message, userId, ticketId || null, assetId || null]
-    );
-  } catch (err) {
-    console.error('[EmailService] Erreur notif système :', err.message);
-  }
+  await createNotification({ userId, title, message, ticketId, assetId });
 }
 
 async function getUserPref(userId, prefKey) {

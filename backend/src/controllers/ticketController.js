@@ -8,15 +8,11 @@ import { notifyAdmins } from '../services/notificationService.js';
 import { t } from '../utils/i18n.js';
 import chatbotBrain from '../services/chatbot/chatbotBrain.js';
 import workflowEngine, { WORKFLOW_TYPES } from '../services/workflowEngine.js';
-
-// ─── Historique ───────────────────────────────────────────────────────────────
-async function addHistory(ticketId, userId, action, oldValue = null, newValue = null) {
-  await pool.query(
-    `INSERT INTO ticket_history (ticket_id, user_id, action, old_value, new_value)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [ticketId, userId, action, oldValue, newValue]
-  );
-}
+import asyncHandler from '../middlewares/asyncHandler.js';
+import { validateId, validateRequired, validateResourceExists } from '../utils/validationUtils.js';
+import { findTicketOrFail } from '../utils/dbUtils.js';
+import { addTicketHistory } from '../utils/historyUtils.js';
+import { analyzeAndSaveSentiment, updatePriorityIfCritical } from '../utils/sentimentUtils.js';
 
 // ─── Assignation automatique ──────────────────────────────────────────────────
 async function autoAssign() {
@@ -45,9 +41,8 @@ const ALLOWED_TRANSITIONS = {
 };
 
 // ─── GET /api/tickets/stats ───────────────────────────────────────────────────
-export async function getTicketStats(req, res) {
-  try {
-    const { rows } = await pool.query(
+export const getTicketStats = asyncHandler(async (req, res) => {
+  const { rows } = await pool.query(
       `SELECT
          COUNT(*) FILTER (WHERE status = 'Nouveau')    AS open,
          COUNT(*) FILTER (WHERE status = 'En cours')   AS in_progress,
@@ -57,19 +52,14 @@ export async function getTicketStats(req, res) {
        FROM tickets`
     );
     return res.json({ success: true, data: rows[0] });
-  } catch (err) {
-    console.error('[getTicketStats]', err);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 // ─── GET /api/tickets ─────────────────────────────────────────────────────────
-export async function getTickets(req, res) {
+export const getTickets = asyncHandler(async (req, res) => {
   const { role, id: userId } = req.user;
   const { status, priority } = req.query;
 
-  try {
-    let where = 'WHERE 1=1';
+  let where = 'WHERE 1=1';
     const params = [];
 
     if (role === 'Technicien') {
@@ -95,21 +85,15 @@ export async function getTickets(req, res) {
       params
     );
     return res.json({ success: true, data: rows });
-  } catch (err) {
-    console.error('[getTickets]', err);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 // ─── GET /api/tickets/:id ─────────────────────────────────────────────────────
-export async function getTicketById(req, res) {
+export const getTicketById = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { role, id: userId } = req.user;
-  if (isNaN(id))
-    return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
+  if (!validateId(id, req, res)) return;
 
-  try {
-    const { rows } = await pool.query(
+  const { rows } = await pool.query(
       `SELECT t.*,
               u1.username  AS created_by_name,
               u2.username  AS assigned_to_name,
@@ -143,7 +127,7 @@ export async function getTicketById(req, res) {
         `UPDATE tickets SET status = 'En cours', updated_at = NOW() WHERE id = $1`,
         [id]
       );
-      await addHistory(id, userId, 'status_change', 'Assigné', 'En cours');
+      await addTicketHistory(id, userId, 'status_change', 'Assigné', 'En cours');
       await emailService.notifyStatusChange(
         ticket, 'En cours',
         ticket.assigned_to_name || 'Technicien',
@@ -183,14 +167,10 @@ export async function getTicketById(req, res) {
       success: true,
       data: { ...ticket, comments, history, suggestions }
     });
-  } catch (err) {
-    console.error('[getTicketById]', err.message);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 // ─── POST /api/tickets — Agent seulement ──────────────────────────────────────
-export async function createTicket(req, res) {
+export const createTicket = asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty())
     return res.status(400).json({ success: false, errors: errors.array() });
@@ -206,8 +186,7 @@ export async function createTicket(req, res) {
   else if (priority === 'Basse') dueDate.setHours(dueDate.getHours() + 72);
   else                           dueDate.setHours(dueDate.getHours() + 24);
 
-  try {
-    if (asset_id) {
+  if (asset_id) {
       const { rows: assetCheck } = await pool.query(
         'SELECT id, asset_tag FROM assets WHERE id = $1', [asset_id]
       );
@@ -232,40 +211,15 @@ export async function createTicket(req, res) {
 
     // ── Analyse de sentiment ──────────────────────────────────────
     const textToAnalyze = `${title} ${description}`;
-    const sentimentResult = analyzeSentiment(textToAnalyze);
-    const sentimentActions = getSentimentActions(textToAnalyze);
-
-    await pool.query(
-      `UPDATE tickets SET
-         sentiment = $1, sentiment_score = $2, sentiment_emotions = $3,
-         sentiment_intensity = $4, sentiment_is_critical = $5,
-         sentiment_analyzed_at = NOW()
-       WHERE id = $6`,
-      [
-        sentimentResult.sentiment,
-        sentimentResult.score,
-        JSON.stringify(sentimentResult.emotions),
-        sentimentResult.intensity,
-        sentimentActions.shouldMarkCritical,
-        ticket.id,
-      ]
+    const { sentimentActions } = await analyzeAndSaveSentiment(
+      textToAnalyze, 'tickets', ticket.id, ticket.id, title, 'sentiment_alert'
     );
 
-    if (sentimentActions.shouldMarkCritical && priority !== 'Haute') {
-      await pool.query(`UPDATE tickets SET priority = 'Haute' WHERE id = $1`, [ticket.id]);
-      ticket.priority = 'Haute';
+    if (sentimentActions.shouldMarkCritical) {
+      ticket.priority = await updatePriorityIfCritical(ticket.id, true, priority || 'Moyenne') || ticket.priority;
     }
 
-    if (sentimentActions.shouldNotifyManager) {
-      notifyAdmins({
-        type: 'sentiment_alert', ticketId: ticket.id,
-        ticketTitle: title, sentiment: sentimentResult.sentiment,
-        score: sentimentResult.score, emotions: sentimentResult.emotions,
-        reasons: sentimentActions.reason, priority: sentimentActions.priority,
-      }).catch(() => {});
-    }
-
-    await addHistory(ticket.id, userId, 'created', null, 'Nouveau');
+    await addTicketHistory(ticket.id, userId, 'created', null, 'Nouveau');
 
     if (asset_id) {
       await pool.query(
@@ -282,7 +236,7 @@ export async function createTicket(req, res) {
         `UPDATE tickets SET assigned_to = $1, status = 'Assigné' WHERE id = $2`,
         [techId, ticket.id]
       );
-      await addHistory(ticket.id, userId, 'auto_assigned', null, String(techId));
+      await addTicketHistory(ticket.id, userId, 'auto_assigned', null, String(techId));
       ticket.assigned_to = techId;
       ticket.status = 'Assigné';
     }
@@ -304,23 +258,17 @@ export async function createTicket(req, res) {
       data: ticket,
       suggestions,
     });
-  } catch (err) {
-    console.error('[createTicket]', err.message);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 // ─── PATCH /api/tickets/:id/status ───────────────────────────────────────────
-export async function updateStatus(req, res) {
+export const updateStatus = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { status: newStatus } = req.body;
   const { role, id: userId } = req.user;
-  if (isNaN(id)) return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
+  if (!validateId(id, req, res)) return;
 
-  try {
-    const { rows } = await pool.query('SELECT * FROM tickets WHERE id = $1', [id]);
-    if (!rows[0]) return res.status(404).json({ success: false, message: t(req, 'ticket_not_found') });
-    const ticket = rows[0];
+  const ticket = await findTicketOrFail(id, req, res);
+    if (!ticket) return;
 
     const allowed = ALLOWED_TRANSITIONS[ticket.status] || [];
     if (!allowed.includes(newStatus))
@@ -345,7 +293,7 @@ export async function updateStatus(req, res) {
       [newStatus, resolvedAt, id]
     );
     const updatedTicket = { ...ticket, status: newStatus };
-    await addHistory(id, userId, 'status_change', ticket.status, newStatus);
+    await addTicketHistory(id, userId, 'status_change', ticket.status, newStatus);
 
     await emailService.notifyStatusChange(
       ticket, newStatus, req.user.username, ticket.created_by, userId
@@ -359,22 +307,17 @@ export async function updateStatus(req, res) {
     }
 
     return res.json({ success: true, message: t(req, 'status_updated', { status: newStatus }) });
-  } catch (err) {
-    console.error('[updateStatus]', err);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 // ─── PATCH /api/tickets/:id/assign — Admin seulement ─────────────────────────
-export async function assignTicket(req, res) {
+export const assignTicket = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { technicianId } = req.body;
   const { id: userId } = req.user;
-  if (isNaN(id)) return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
+  if (!validateId(id, req, res)) return;
 
-  try {
-    const { rows } = await pool.query('SELECT * FROM tickets WHERE id = $1', [id]);
-    if (!rows[0]) return res.status(404).json({ success: false, message: t(req, 'ticket_not_found') });
+  const ticket = await findTicketOrFail(id, req, res);
+    if (!ticket) return;
 
     const { rows: techRows } = await pool.query(
       `SELECT u.id, u.username FROM users u
@@ -388,28 +331,23 @@ export async function assignTicket(req, res) {
       `UPDATE tickets SET assigned_to = $1, status = 'Assigné', updated_at = NOW() WHERE id = $2`,
       [technicianId, id]
     );
-    await addHistory(id, userId, 'manual_assigned', String(rows[0].assigned_to), String(technicianId));
+    await addTicketHistory(id, userId, 'manual_assigned', String(ticket.assigned_to), String(technicianId));
 
-    await emailService.notifyAssigned(rows[0], technicianId, req.user.username, userId);
+    await emailService.notifyAssigned(ticket, technicianId, req.user.username, userId);
 
     return res.json({ success: true, message: t(req, 'ticket_assigned', { username: techRows[0].username }) });
-  } catch (err) {
-    console.error('[assignTicket]', err);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 // ─── PATCH /api/tickets/:id/transfer — Technicien seulement ──────────────────
-export async function transferTicket(req, res) {
+export const transferTicket = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { technicianId } = req.body;
   const { id: userId } = req.user;
-  if (isNaN(id)) return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
+  if (!validateId(id, req, res)) return;
 
-  try {
-    const { rows } = await pool.query('SELECT * FROM tickets WHERE id = $1', [id]);
-    if (!rows[0]) return res.status(404).json({ success: false, message: t(req, 'ticket_not_found') });
-    if (rows[0].assigned_to !== userId)
+  const ticket = await findTicketOrFail(id, req, res);
+    if (!ticket) return;
+    if (ticket.assigned_to !== userId)
       return res.status(403).json({ success: false, message: t(req, 'not_assigned_to_ticket') });
 
     const { rows: techRows } = await pool.query(
@@ -424,32 +362,27 @@ export async function transferTicket(req, res) {
       `UPDATE tickets SET assigned_to = $1, updated_at = NOW() WHERE id = $2`,
       [technicianId, id]
     );
-    await addHistory(id, userId, 'transferred', String(userId), String(technicianId));
+    await addTicketHistory(id, userId, 'transferred', String(userId), String(technicianId));
 
-    await emailService.notifyAssigned(rows[0], technicianId, req.user.username, userId);
+    await emailService.notifyAssigned(ticket, technicianId, req.user.username, userId);
 
     return res.json({ success: true, message: t(req, 'ticket_transferred', { username: techRows[0].username }) });
-  } catch (err) {
-    console.error('[transferTicket]', err);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 // ─── POST /api/tickets/:id/comments ──────────────────────────────────────────
-export async function addComment(req, res) {
+export const addComment = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { message, is_internal } = req.body;
   const { role, id: userId } = req.user;
-  if (isNaN(id)) return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
+  if (!validateId(id, req, res)) return;
   if (!message?.trim()) return res.status(400).json({ success: false, message: t(req, 'message_required') });
 
   const internal = (role === 'Technicien' || role === 'Admin') && is_internal === true;
 
-  try {
-    const { rows: ticketRows } = await pool.query('SELECT * FROM tickets WHERE id = $1', [id]);
-    if (!ticketRows[0]) return res.status(404).json({ success: false, message: t(req, 'ticket_not_found') });
+  const ticket = await findTicketOrFail(id, req, res);
+    if (!ticket) return;
 
-    if (role === 'Agent' && ticketRows[0].created_by !== userId)
+    if (role === 'Agent' && ticket.created_by !== userId)
       return res.status(403).json({ success: false, message: t(req, 'access_denied') });
 
     const { rows } = await pool.query(
@@ -459,74 +392,40 @@ export async function addComment(req, res) {
     );
 
     // ── Analyse de sentiment du commentaire ───────────────────────
-    const sentimentResult  = analyzeSentiment(message.trim());
-    const sentimentActions = getSentimentActions(message.trim());
-
-    await pool.query(
-      `UPDATE ticket_comments SET
-         sentiment = $1, sentiment_score = $2, sentiment_emotions = $3,
-         sentiment_intensity = $4, sentiment_is_critical = $5
-       WHERE id = $6`,
-      [
-        sentimentResult.sentiment,
-        sentimentResult.score,
-        JSON.stringify(sentimentResult.emotions),
-        sentimentResult.intensity,
-        sentimentResult.isCritical,
-        rows[0].id,
-      ]
+    await analyzeAndSaveSentiment(
+      message.trim(), 'ticket_comments', rows[0].id, id, ticket.title, 'comment_sentiment_alert'
     );
 
-    if (sentimentResult.isCritical) {
-      notifyAdmins({
-        type: 'comment_sentiment_alert',
-        ticketId: id, ticketTitle: ticketRows[0].title,
-        commentId: rows[0].id, sentiment: sentimentResult.sentiment,
-        score: sentimentResult.score, emotions: sentimentResult.emotions,
-      }).catch(() => {});
-    }
-
     await pool.query('UPDATE tickets SET updated_at = NOW() WHERE id = $1', [id]);
-    await addHistory(
+    await addTicketHistory(
       id, userId,
       internal ? 'internal_note' : 'comment_added',
       null, message.trim().substring(0, 100)
     );
 
     await emailService.notifyComment(
-      ticketRows[0], req.user.username, internal,
-      ticketRows[0].created_by, ticketRows[0].assigned_to, userId
+      ticket, req.user.username, internal,
+      ticket.created_by, ticket.assigned_to, userId
     );
 
     return res.status(201).json({ success: true, data: rows[0] });
-  } catch (err) {
-    console.error('[addComment]', err);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 // ─── DELETE /api/tickets/:id — Admin seulement ───────────────────────────────
-export async function deleteTicket(req, res) {
+export const deleteTicket = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  if (isNaN(id)) return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
-  try {
-    const { rowCount } = await pool.query('DELETE FROM tickets WHERE id = $1', [id]);
+  if (!validateId(id, req, res)) return;
+  const { rowCount } = await pool.query('DELETE FROM tickets WHERE id = $1', [id]);
     if (rowCount === 0) return res.status(404).json({ success: false, message: t(req, 'ticket_not_found') });
     return res.json({ success: true, message: t(req, 'ticket_deleted') });
-  } catch (err) {
-    console.error('[deleteTicket]', err);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 // ─── GET /api/tickets/asset/:assetId ─────────────────────────────────────────
-export async function getTicketsByAsset(req, res) {
+export const getTicketsByAsset = asyncHandler(async (req, res) => {
   const { assetId } = req.params;
-  if (isNaN(assetId))
-    return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
+  if (!validateId(assetId, req, res)) return;
 
-  try {
-    const { rows } = await pool.query(
+  const { rows } = await pool.query(
       `SELECT t.*,
               u1.username AS created_by_name,
               u2.username AS assigned_to_name
@@ -538,35 +437,25 @@ export async function getTicketsByAsset(req, res) {
       [assetId]
     );
     return res.json({ success: true, data: rows });
-  } catch (err) {
-    console.error('[getTicketsByAsset]', err.message);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 // ─── GET /api/tickets/reliability ────────────────────────────────────────────
-export async function getReliabilityAlerts(req, res) {
-  try {
-    const { rows } = await pool.query(`
+export const getReliabilityAlerts = asyncHandler(async (req, res) => {
+  const { rows } = await pool.query(`
       SELECT * FROM asset_reliability
       WHERE pannes_6mois >= 3
       ORDER BY pannes_6mois DESC
     `);
     return res.json({ success: true, data: rows });
-  } catch (err) {
-    console.error('[getReliabilityAlerts]', err.message);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 // ─── POST /api/tickets/:id/remote-session — Technicien/Admin ─────────────────
-export async function startRemoteSession(req, res) {
+export const startRemoteSession = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { session_id, tool, session_url } = req.body;
   const { id: userId, role } = req.user;
 
-  if (isNaN(id))
-    return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
+  if (!validateId(id, req, res)) return;
 
   if (!session_id && !session_url)
     return res.status(400).json({
@@ -574,12 +463,8 @@ export async function startRemoteSession(req, res) {
       message: t(req, 'remote_session_required'),
     });
 
-  try {
-    const { rows } = await pool.query('SELECT * FROM tickets WHERE id = $1', [id]);
-    if (!rows[0])
-      return res.status(404).json({ success: false, message: t(req, 'ticket_not_found') });
-
-    const ticket = rows[0];
+  const ticket = await findTicketOrFail(id, req, res);
+    if (!ticket) return;
 
     if (role === 'Technicien' && ticket.assigned_to !== userId)
       return res.status(403).json({
@@ -598,7 +483,7 @@ export async function startRemoteSession(req, res) {
       [session_id || null, tool || 'Autre', session_url || null, userId, id]
     );
 
-    await addHistory(id, userId, 'remote_session_started', null,
+    await addTicketHistory(id, userId, 'remote_session_started', null,
       `Session ${tool || 'distante'} : ${session_id || session_url}`
     );
 
@@ -608,26 +493,19 @@ export async function startRemoteSession(req, res) {
       success: true,
       message: t(req, 'remote_session_started'),
     });
-  } catch (err) {
-    console.error('[startRemoteSession]', err.message);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 // ─── DELETE /api/tickets/:id/remote-session — clôturer la session ─────────────
-export async function endRemoteSession(req, res) {
+export const endRemoteSession = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { id: userId, role } = req.user;
 
-  if (isNaN(id))
-    return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
+  if (!validateId(id, req, res)) return;
 
-  try {
-    const { rows } = await pool.query('SELECT * FROM tickets WHERE id = $1', [id]);
-    if (!rows[0])
-      return res.status(404).json({ success: false, message: t(req, 'ticket_not_found') });
+  const ticket = await findTicketOrFail(id, req, res);
+    if (!ticket) return;
 
-    if (role === 'Technicien' && rows[0].assigned_to !== userId)
+    if (role === 'Technicien' && ticket.assigned_to !== userId)
       return res.status(403).json({ success: false, message: t(req, 'access_denied') });
 
     await pool.query(
@@ -641,11 +519,7 @@ export async function endRemoteSession(req, res) {
       [id]
     );
 
-    await addHistory(id, userId, 'remote_session_ended', null, 'Session à distance clôturée');
+    await addTicketHistory(id, userId, 'remote_session_ended', null, 'Session à distance clôturée');
 
     return res.json({ success: true, message: t(req, 'remote_session_ended') });
-  } catch (err) {
-    console.error('[endRemoteSession]', err.message);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});

@@ -1,12 +1,12 @@
 // backend/src/services/notificationService.js
 import pool from '../db.js';
 
-export async function createNotification({ userId, title, message, ticketId = null }) {
+export async function createNotification({ userId, title, message, ticketId = null, assetId = null }) {
   try {
     await pool.query(
-      `INSERT INTO notifications (user_id, title, message, "read", ticket_id)
-       VALUES ($1, $2, $3, FALSE, $4)`,
-      [userId, title, message, ticketId || null]
+      `INSERT INTO notifications (user_id, title, message, "read", ticket_id, asset_id)
+       VALUES ($1, $2, $3, FALSE, $4, $5)`,
+      [userId, title, message, ticketId || null, assetId || null]
     );
   } catch (err) {
     console.error('[notificationService] Erreur création notification:', err.message);

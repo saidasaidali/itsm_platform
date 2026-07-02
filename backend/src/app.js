@@ -27,9 +27,12 @@ import suggestionRoutes from './routes/suggestionRoutes.js';
 import recommendationRoutes from './routes/recommendationRoutes.js';
 import sentimentRoutes from './routes/sentimentRoutes.js';
 import qrCodeRoutes from './routes/qrCodeRoutes.js';
+import smartAssistantRoutes from './routes/smartAssistantRoutes.js';
+import reportRoutes from './routes/reportRoutes.js';
 import { runQRCodeMigration } from './services/qrCodeMigration.js';
 import languageMiddleware from './middlewares/languageMiddleware.js';
 import { startMLService, stopMLService } from './services/startMLService.js';
+import { runSmartAssistantMigration } from './services/smartAssistantMigration.js';
 import { t } from './utils/i18n.js';
 import pool from './db.js';
 
@@ -90,6 +93,8 @@ app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/recommendations', recommendationRoutes);
 app.use('/api/sentiment', sentimentRoutes);
 app.use('/api/qr', qrCodeRoutes);
+app.use('/api/smart-assistant', smartAssistantRoutes);
+app.use('/api/reports', reportRoutes);
 app.use((req, res) => {
   res.status(404).json({ success: false, message: t(req, 'route_not_found') });
 });
@@ -120,6 +125,37 @@ pool.query(`
   console.log('[Migration] Colonnes de sentiment ajoutées avec succès.');
 }).catch(err => {
   console.error('[Migration] Erreur lors de l\'ajout des colonnes de sentiment:', err.message);
+});
+
+
+// Migration automatique pour le Smart Assistant
+runSmartAssistantMigration().then(() => {
+  console.log('[Migration] Tables Smart Assistant vérifiées/créées avec succès.');
+}).catch(err => {
+  console.error('[Migration] Erreur lors de la création des tables Smart Assistant:', err.message);
+});
+
+// Migration automatique pour les rapports
+pool.query(`
+  CREATE TABLE IF NOT EXISTS reports (
+    id SERIAL PRIMARY KEY,
+    report_type VARCHAR(20) NOT NULL CHECK (report_type IN ('monthly', 'weekly', 'custom')),
+    period_start DATE NOT NULL,
+    period_end DATE NOT NULL,
+    generated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    generated_at TIMESTAMP DEFAULT NOW(),
+    file_path VARCHAR(500),
+    status VARCHAR(20) DEFAULT 'generating' CHECK (status IN ('generating', 'completed', 'failed')),
+    error_message TEXT
+  );
+  
+  CREATE INDEX IF NOT EXISTS idx_reports_type ON reports(report_type);
+  CREATE INDEX IF NOT EXISTS idx_reports_generated_at ON reports(generated_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_reports_generated_by ON reports(generated_by);
+`).then(() => {
+  console.log('[Migration] Table reports vérifiée/créée avec succès.');
+}).catch(err => {
+  console.error('[Migration] Erreur lors de la création de la table reports:', err.message);
 });
 
 

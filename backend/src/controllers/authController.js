@@ -14,11 +14,12 @@ import {
 } from '../services/authService.js';
 import pool from '../db.js';
 import emailService from '../services/emailService.js';
+import asyncHandler from '../middlewares/asyncHandler.js';
 
 const FRONTEND = process.env.FRONTEND_URL || 'http://localhost:3001';
 
 // ─── POST /api/auth/login ─────────────────────────────────────────────────────
-export async function login(req, res) {
+export const login = asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ success: false, errors: errors.array() });
@@ -26,8 +27,7 @@ export async function login(req, res) {
 
   const { identifier, password } = req.body;
 
-  try {
-    const user = await findUserByEmailOrUsername(identifier);
+  const user = await findUserByEmailOrUsername(identifier);
 
     if (!user) {
       return res.status(401).json({ success: false, message: t(req, 'invalid_credentials') });
@@ -66,14 +66,10 @@ export async function login(req, res) {
         created_at: user.created_at,
       },
     });
-  } catch (err) {
-    console.error('[login]', err);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 // ─── POST /api/auth/register (Public) ────────────────────────────────────────
-export async function register(req, res) {
+export const register = asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ success: false, errors: errors.array() });
@@ -81,8 +77,7 @@ export async function register(req, res) {
 
   const { username, email, password, role_id } = req.body;
 
-  try {
-    const publicRoles = [2, 3]; // Technicien, Agent
+  const publicRoles = [2, 3]; // Technicien, Agent
     if (!publicRoles.includes(Number(role_id))) {
       return res.status(400).json({
         success: false,
@@ -116,16 +111,11 @@ export async function register(req, res) {
       message: t(req, 'register_success'),
       user: rows[0],
     });
-  } catch (err) {
-    console.error('[register]', err);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 // ─── GET /api/auth/me ─────────────────────────────────────────────────────────
-export async function me(req, res) {
-  try {
-    const user = await findUserById(req.user.id);
+export const me = asyncHandler(async (req, res) => {
+  const user = await findUserById(req.user.id);
     if (!user) {
       return res.status(404).json({ success: false, message: t(req, 'user_not_found') });
     }
@@ -140,11 +130,7 @@ export async function me(req, res) {
         created_at: user.created_at,
       },
     });
-  } catch (err) {
-    console.error('[me]', err);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 // ─── POST /api/auth/logout ────────────────────────────────────────────────────
 export function logout(req, res) {
@@ -155,14 +141,13 @@ export function logout(req, res) {
 }
 
 // ─── POST /api/auth/forgot-password ───────────────────────────────────────────
-export async function forgotPassword(req, res) {
+export const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
   if (!email) {
     return res.status(400).json({ success: false, message: t(req, 'email_required') });
   }
 
-  try {
-    // Utilise 'status' (cohérent avec login/register), pas 'is_active'
+  // Utilise 'status' (cohérent avec login/register), pas 'is_active'
     const { rows } = await pool.query(
       `SELECT id, username, email FROM users WHERE email = $1 AND status = 'active'`,
       [email]
@@ -192,17 +177,12 @@ export async function forgotPassword(req, res) {
       success: true,
       message: t(req, 'reset_email_sent'),
     });
-  } catch (err) {
-    console.error('[forgotPassword]', err.message);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 // ─── GET /api/auth/reset-password/:token — vérifier validité ─────────────────
-export async function checkResetToken(req, res) {
+export const checkResetToken = asyncHandler(async (req, res) => {
   const { token } = req.params;
-  try {
-    const { rows } = await pool.query(
+  const { rows } = await pool.query(
       `SELECT id FROM users WHERE reset_token = $1 AND reset_token_expires > NOW()`,
       [token]
     );
@@ -210,14 +190,10 @@ export async function checkResetToken(req, res) {
       return res.status(400).json({ success: false, message: t(req, 'reset_link_invalid') });
     }
     return res.json({ success: true, message: t(req, 'reset_link_valid') });
-  } catch (err) {
-    console.error('[checkResetToken]', err.message);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 // ─── POST /api/auth/reset-password/:token ─────────────────────────────────────
-export async function resetPassword(req, res) {
+export const resetPassword = asyncHandler(async (req, res) => {
   const { token } = req.params;
   const { password } = req.body;
 
@@ -228,8 +204,7 @@ export async function resetPassword(req, res) {
     });
   }
 
-  try {
-    const { rows } = await pool.query(
+  const { rows } = await pool.query(
       `SELECT id, username, email FROM users
        WHERE reset_token = $1 AND reset_token_expires > NOW()`,
       [token]
@@ -252,21 +227,16 @@ export async function resetPassword(req, res) {
     );
 
     return res.json({ success: true, message: t(req, 'password_reset_success') });
-  } catch (err) {
-    console.error('[resetPassword]', err.message);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});
 
 // ─── PATCH /api/users/:id/reset-password — Admin force un reset ──────────────
-export async function adminResetPassword(req, res) {
+export const adminResetPassword = asyncHandler(async (req, res) => {
   const { id } = req.params;
   if (isNaN(id)) {
     return res.status(400).json({ success: false, message: t(req, 'invalid_id') });
   }
 
-  try {
-    const { rows } = await pool.query(
+  const { rows } = await pool.query(
       `SELECT id, username, email FROM users WHERE id = $1`, [id]
     );
     if (!rows[0]) {
@@ -294,8 +264,4 @@ export async function adminResetPassword(req, res) {
       message: `Mot de passe réinitialisé. Un email a été envoyé à ${user.email}.`,
       tempPassword,
     });
-  } catch (err) {
-    console.error('[adminResetPassword]', err.message);
-    return res.status(500).json({ success: false, message: t(req, 'server_error') });
-  }
-}
+});

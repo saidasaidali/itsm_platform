@@ -13,6 +13,8 @@
   "license": "ISC",
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "canvas": "^3.2.3",
+    "chart.js": "^4.5.1",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
@@ -24,6 +26,7 @@
     "nodemailer": "^9.0.0",
     "ollama": "^0.5.12",
     "pdf-parse": "^1.1.1",
+    "pdfkit": "^0.19.1",
     "pg": "^8.21.0",
     "xlsx": "^0.18.5"
   },
