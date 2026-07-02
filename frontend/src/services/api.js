@@ -22,7 +22,8 @@ const buildHeaders = (extra = {}) => ({
 const handleResponse = async (res) => {
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(data.message || i18n.t('api.http_error', { status: res.status }))
-  return data
+  // Garantir que data.data existe toujours pour éviter les erreurs "Cannot read properties of undefined"
+  return { ...data, data: data.data || {} }
 }
 
 export const api = {
@@ -62,6 +63,12 @@ export const api = {
 
   delete: (path) =>
     fetch(`${API_URL}${path}`, { method: 'DELETE', headers: buildHeaders() }).then(handleResponse),
+
+  upload: (path, file, fieldName = 'file') => {
+    const formData = new FormData()
+    formData.append(fieldName, file)
+    return api.post(path, formData)
+  },
 }
 
 export default api

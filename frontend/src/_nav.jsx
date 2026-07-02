@@ -11,6 +11,7 @@ import {
   cilLibrary,
   cilBan,
   cilSettings,
+  cilChart,
 } from '@coreui/icons'
 
 import { CNavItem, CNavTitle } from '@coreui/react'
@@ -71,6 +72,14 @@ const getNav = () => [
     to: '/anomalies',
     icon: <CIcon icon={cilBan} customClassName="nav-icon" />,
     roles: ['Admin', 'Technicien'],
+  },
+
+  {
+    component: CNavItem,
+    name: 'Rapports IA',
+    to: '/reports',
+    icon: <CIcon icon={cilChart} customClassName="nav-icon" />,
+    roles: ['Admin'],
   },
 
   {

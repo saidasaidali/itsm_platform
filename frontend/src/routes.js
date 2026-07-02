@@ -20,6 +20,7 @@ const UserForm     = React.lazy(() => import('./views/users/UserForm'))
 const ImportUsers  = React.lazy(() => import('./views/users/ImportUsers'))
 const Anomalies    = React.lazy(() => import('./views/anomalies/Anomalies'))
 const Parametres   = React.lazy(() => import('./views/settings/Parametres'))
+const Reports      = React.lazy(() => import('./views/reports/Reports'))
 
 const routes = [
   { path: '/dashboard', element: Dashboard },
@@ -56,6 +57,7 @@ const routes = [
 
   { path: '/anomalies',  element: Anomalies },
   { path: '/parametres', element: Parametres },
+  { path: '/reports',    element: Reports },
 ]
 
 export default routes

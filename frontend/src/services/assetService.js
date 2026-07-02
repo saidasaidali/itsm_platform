@@ -121,8 +121,6 @@ export const deleteAsset = async (id) => {
 }
 
 export const importAssetsFromExcel = async (file) => {
-  const formData = new FormData()
-  formData.append('file', file)
-  const data = await api.post('/api/assets/import', formData)
+  const data = await api.upload('/api/assets/import', file)
   return data.data
 }

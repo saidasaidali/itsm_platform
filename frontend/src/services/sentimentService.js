@@ -1,83 +1,50 @@
 // frontend/src/services/sentimentService.js
 // Service pour l'analyse de sentiment
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+import { api } from './api';
 
 /**
  * Analyser le sentiment d'un texte
  */
 export async function analyzeText(text) {
-  const response = await fetch(`${API_URL}/sentiment/analyze`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('itsm-auth-token')}`,
-    },
-    body: JSON.stringify({ text }),
-  });
-
-  if (!response.ok) {
-    throw new Error('Erreur lors de l\'analyse de sentiment');
+  try {
+    return await api.post('/api/sentiment/analyze', { text });
+  } catch (err) {
+    throw new Error(err.message || 'Erreur lors de l\'analyse de sentiment');
   }
-
-  return response.json();
 }
 
 /**
  * Analyser le sentiment d'un ticket
  */
 export async function analyzeTicketSentiment(ticketId, text) {
-  const response = await fetch(`${API_URL}/sentiment/ticket/${ticketId}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('itsm-auth-token')}`,
-    },
-    body: JSON.stringify({ text }),
-  });
-
-  if (!response.ok) {
-    throw new Error('Erreur lors de l\'analyse du ticket');
+  try {
+    return await api.post(`/api/sentiment/ticket/${ticketId}`, { text });
+  } catch (err) {
+    throw new Error(err.message || 'Erreur lors de l\'analyse du ticket');
   }
-
-  return response.json();
 }
 
 /**
  * Analyser le sentiment d'un commentaire
  */
 export async function analyzeCommentSentiment(commentId, text) {
-  const response = await fetch(`${API_URL}/sentiment/comment/${commentId}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('itsm-auth-token')}`,
-    },
-    body: JSON.stringify({ text }),
-  });
-
-  if (!response.ok) {
-    throw new Error('Erreur lors de l\'analyse du commentaire');
+  try {
+    return await api.post(`/api/sentiment/comment/${commentId}`, { text });
+  } catch (err) {
+    throw new Error(err.message || 'Erreur lors de l\'analyse du commentaire');
   }
-
-  return response.json();
 }
 
 /**
  * Récupérer les tickets critiques
  */
 export async function getCriticalTickets() {
-  const response = await fetch(`${API_URL}/sentiment/critical`, {
-    headers: {
-      'Authorization': `Bearer ${localStorage.getItem('itsm-auth-token')}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error('Erreur lors de la récupération des tickets critiques');
+  try {
+    return await api.get('/api/sentiment/critical');
+  } catch (err) {
+    throw new Error(err.message || 'Erreur lors de la récupération des tickets critiques');
   }
-
-  return response.json();
 }
 
 /**

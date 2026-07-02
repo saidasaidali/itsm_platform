@@ -10,6 +10,7 @@ import './scss/style.scss'
 
 import { AuthProvider, AuthContext } from './auth/AuthProvider'
 import i18n from './i18n'
+import SmartAssistant from './components/SmartAssistant'
 
 // ────────────────────────────────
 // Lazy pages
@@ -190,6 +191,7 @@ const App = () => {
       >
         <AuthProvider>
           <AppRoutes />
+          <SmartAssistant />
         </AuthProvider>
       </Suspense>
     </HashRouter>

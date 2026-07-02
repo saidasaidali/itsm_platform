@@ -119,7 +119,8 @@ const ImportArticles = () => {
     setError('')
     try {
       const data = await importArticlesFromExcel(file)
-      setResult(data.results)
+      // Protection supplémentaire : vérifier que data et data.results existent
+      setResult(data?.results || { created: [], skipped: [], errors: [] })
     } catch (err) {
       setError(err.message || t('knowledge.import_articles.import_error'))
     } finally {

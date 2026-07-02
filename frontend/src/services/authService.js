@@ -10,11 +10,7 @@ const TOKEN_KEY = 'itsm-auth-token'
 
 const getLang = () => localStorage.getItem('itsm-lang') || 'fr'
 
-const authHeaders = (extra = {}) => ({
-  'Content-Type': 'application/json',
-  'Accept-Language': getLang(),
-  ...extra,
-})
+import { api } from './api'
 
 const clearAuthData = () => {
   localStorage.removeItem(USER_KEY)
@@ -49,24 +45,19 @@ const isTokenValid = (token) => {
 }
 
 export const login = async ({ identifier, password }) => {
-  const response = await fetch(`${API_URL}/api/auth/login`, {
-    method: 'POST',
-    headers: authHeaders(),
-    body: JSON.stringify({ identifier, password }),
-  })
-  const data = await response.json()
-  if (!response.ok) throw new Error(data.message || i18n.t('api.login_invalid'))
-  saveAuthData(data.user, data.token)
-  return data.user
+  try {
+    const data = await api.post('/api/auth/login', { identifier, password })
+    saveAuthData(data.user, data.token)
+    return data.user
+  } catch (err) {
+    throw new Error(err.message || i18n.t('api.login_invalid'))
+  }
 }
 
 export const logout = async () => {
   const token = localStorage.getItem(TOKEN_KEY)
   if (token) {
-    await fetch(`${API_URL}/api/auth/logout`, {
-      method: 'POST',
-      headers: authHeaders({ Authorization: `Bearer ${token}` }),
-    }).catch(() => {})
+    await api.post('/api/auth/logout', {}).catch(() => {})
   }
   clearAuthData()
 }
@@ -89,44 +80,37 @@ export const getCurrentUser = () => {
 export const getAuthToken = () => localStorage.getItem(TOKEN_KEY)
 
 export const register = async (userData) => {
-  const response = await fetch(`${API_URL}/api/auth/register`, {
-    method: 'POST',
-    headers: authHeaders(),
-    body: JSON.stringify(userData),
-  })
-  const data = await response.json()
-  if (!response.ok) throw new Error(data.message || i18n.t('api.register_error'))
-  return { user: data.user, message: data.message }
+  try {
+    const data = await api.post('/api/auth/register', userData)
+    return { user: data.user, message: data.message }
+  } catch (err) {
+    throw new Error(err.message || i18n.t('api.register_error'))
+  }
 }
 
 export const forgotPassword = async (email) => {
-  const response = await fetch(`${API_URL}/api/auth/forgot-password`, {
-    method: 'POST',
-    headers: authHeaders(),
-    body: JSON.stringify({ email }),
-  })
-  const data = await response.json()
-  if (!response.ok) throw new Error(data.message || i18n.t('api.forgot_error'))
-  return data
+  try {
+    const data = await api.post('/api/auth/forgot-password', { email })
+    return data
+  } catch (err) {
+    throw new Error(err.message || i18n.t('api.forgot_error'))
+  }
 }
 
 export const checkResetToken = async (token) => {
-  const response = await fetch(`${API_URL}/api/auth/reset-password/${token}`, {
-    method: 'GET',
-    headers: authHeaders(),
-  })
-  const data = await response.json()
-  if (!response.ok) throw new Error(data.message || i18n.t('api.reset_invalid'))
-  return data
+  try {
+    const data = await api.get(`/api/auth/reset-password/${token}`)
+    return data
+  } catch (err) {
+    throw new Error(err.message || i18n.t('api.reset_invalid'))
+  }
 }
 
 export const resetPassword = async (token, password) => {
-  const response = await fetch(`${API_URL}/api/auth/reset-password/${token}`, {
-    method: 'POST',
-    headers: authHeaders(),
-    body: JSON.stringify({ password }),
-  })
-  const data = await response.json()
-  if (!response.ok) throw new Error(data.message || i18n.t('api.reset_error'))
-  return data
+  try {
+    const data = await api.post(`/api/auth/reset-password/${token}`, { password })
+    return data
+  } catch (err) {
+    throw new Error(err.message || i18n.t('api.reset_error'))
+  }
 }
