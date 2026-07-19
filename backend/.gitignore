@@ -1,0 +1,5 @@
+.env
+.env.*
+# dépendances
+node_modules/
+models/*.bin

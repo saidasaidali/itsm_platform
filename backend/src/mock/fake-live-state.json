@@ -1,0 +1,281 @@
+[
+  {
+    "hostname": "PC-USER-001",
+    "ip": "192.168.25.10",
+    "status": "online",
+    "cpu_usage": "12%",
+    "ram_usage": "45%",
+    "disk_usage": "62%",
+    "last_seen": "2026-07-05T20:30:00Z"
+  },
+  {
+    "hostname": "PC-USER-002",
+    "ip": "192.168.25.11",
+    "status": "online",
+    "cpu_usage": "8%",
+    "ram_usage": "38%",
+    "disk_usage": "45%",
+    "last_seen": "2026-07-05T20:30:00Z"
+  },
+  {
+    "hostname": "PC-USER-003",
+    "ip": "192.168.25.12",
+    "status": "online",
+    "cpu_usage": "25%",
+    "ram_usage": "52%",
+    "disk_usage": "78%",
+    "last_seen": "2026-07-05T20:30:00Z"
+  },
+  {
+    "hostname": "PC-USER-004",
+    "ip": "192.168.25.13",
+    "status": "online",
+    "cpu_usage": "5%",
+    "ram_usage": "41%",
+    "disk_usage": "32%",
+    "last_seen": "2026-07-05T20:30:00Z"
+  },
+  {
+    "hostname": "PC-USER-005",
+    "ip": "192.168.25.14",
+    "status": "online",
+    "cpu_usage": "18%",
+    "ram_usage": "55%",
+    "disk_usage": "58%",
+    "last_seen": "2026-07-05T20:30:00Z"
+  },
+  {
+    "hostname": "PC-USER-006",
+    "ip": "192.168.25.15",
+    "status": "offline",
+    "cpu_usage": "0%",
+    "ram_usage": "0%",
+    "disk_usage": "0%",
+    "last_seen": "2026-07-05T18:15:00Z"
+  },
+  {
+    "hostname": "PC-USER-007",
+    "ip": "192.168.25.16",
+    "status": "online",
+    "cpu_usage": "35%",
+    "ram_usage": "62%",
+    "disk_usage": "85%",
+    "last_seen": "2026-07-05T20:30:00Z"
+  },
+  {
+    "hostname": "PC-USER-008",
+    "ip": "192.168.25.17",
+    "status": "online",
+    "cpu_usage": "15%",
+    "ram_usage": "48%",
+    "disk_usage": "51%",
+    "last_seen": "2026-07-05T20:30:00Z"
+  },
+  {
+    "hostname": "PC-USER-009",
+    "ip": "192.168.25.18",
+    "status": "online",
+    "cpu_usage": "22%",
+    "ram_usage": "58%",
+    "disk_usage": "67%",
+    "last_seen": "2026-07-05T20:30:00Z"
+  },
+  {
+    "hostname": "PC-USER-010",
+    "ip": "192.168.25.19",
+    "status": "online",
+    "cpu_usage": "10%",
+    "ram_usage": "42%",
+    "disk_usage": "38%",
+    "last_seen": "2026-07-05T20:30:00Z"
+  },
+  {
+    "hostname": "PC-TECH-001",
+    "ip": "192.168.25.20",
+    "status": "online",
+    "cpu_usage": "28%",
+    "ram_usage": "55%",
+    "disk_usage": "45%",
+    "last_seen": "2026-07-05T20:30:00Z"
+  },
+  {
+    "hostname": "PC-TECH-002",
+    "ip": "192.168.25.21",
+    "status": "online",
+    "cpu_usage": "15%",
+    "ram_usage": "48%",
+    "disk_usage": "32%",
+    "last_seen": "2026-07-05T20:30:00Z"
+  },
+  {
+    "hostname": "PC-SRV-001",
+    "ip": "192.168.25.30",
+    "status": "online",
+    "cpu_usage": "45%",
+    "ram_usage": "72%",
+    "disk_usage": "55%",
+    "last_seen": "2026-07-05T20:30:00Z"
+  },
+  {
+    "hostname": "PC-SRV-002",
+    "ip": "192.168.25.31",
+    "status": "online",
+    "cpu_usage": "38%",
+    "ram_usage": "68%",
+    "disk_usage": "42%",
+    "last_seen": "2026-07-05T20:30:00Z"
+  },
+  {
+    "hostname": "PC-SRV-003",
+    "ip": "192.168.25.32",
+    "status": "online",
+    "cpu_usage": "52%",
+    "ram_usage": "75%",
+    "disk_usage": "68%",
+    "last_seen": "2026-07-05T20:30:00Z"
+  },
+  {
+    "hostname": "PC-SRV-004",
+    "ip": "192.168.25.33",
+    "status": "online",
+    "cpu_usage": "41%",
+    "ram_usage": "70%",
+    "disk_usage": "52%",
+    "last_seen": "2026-07-05T20:30:00Z"
+  },
+  {
+    "hostname": "PC-SRV-005",
+    "ip": "192.168.25.34",
+    "status": "online",
+    "cpu_usage": "33%",
+    "ram_usage": "65%",
+    "disk_usage": "48%",
+    "last_seen": "2026-07-05T20:30:00Z"
+  },
+  {
+    "hostname": "PC-SRV-006",
+    "ip": "192.168.25.35",
+    "status": "online",
+    "cpu_usage": "29%",
+    "ram_usage": "62%",
+    "disk_usage": "45%",
+    "last_seen": "2026-07-05T20:30:00Z"
+  },
+  {
+    "hostname": "PC-SRV-007",
+    "ip": "192.168.25.36",
+    "status": "online",
+    "cpu_usage": "48%",
+    "ram_usage": "73%",
+    "disk_usage": "58%",
+    "last_seen": "2026-07-05T20:30:00Z"
+  },
+  {
+    "hostname": "PC-SRV-008",
+    "ip": "192.168.25.37",
+    "status": "online",
+    "cpu_usage": "36%",
+    "ram_usage": "69%",
+    "disk_usage": "51%",
+    "last_seen": "2026-07-05T20:30:00Z"
+  },
+  {
+    "hostname": "PC-SRV-009",
+    "ip": "192.168.25.38",
+    "status": "online",
+    "cpu_usage": "42%",
+    "ram_usage": "71%",
+    "disk_usage": "49%",
+    "last_seen": "2026-07-05T20:30:00Z"
+  },
+  {
+    "hostname": "PC-SRV-010",
+    "ip": "192.168.25.39",
+    "status": "online",
+    "cpu_usage": "31%",
+    "ram_usage": "64%",
+    "disk_usage": "46%",
+    "last_seen": "2026-07-05T20:30:00Z"
+  },
+  {
+    "hostname": "PC-DEV-001",
+    "ip": "192.168.25.40",
+    "status": "online",
+    "cpu_usage": "65%",
+    "ram_usage": "78%",
+    "disk_usage": "82%",
+    "last_seen": "2026-07-05T20:30:00Z"
+  },
+  {
+    "hostname": "PC-DEV-002",
+    "ip": "192.168.25.41",
+    "status": "online",
+    "cpu_usage": "58%",
+    "ram_usage": "72%",
+    "disk_usage": "75%",
+    "last_seen": "2026-07-05T20:30:00Z"
+  },
+  {
+    "hostname": "PC-DEV-003",
+    "ip": "192.168.25.42",
+    "status": "online",
+    "cpu_usage": "72%",
+    "ram_usage": "81%",
+    "disk_usage": "88%",
+    "last_seen": "2026-07-05T20:30:00Z"
+  },
+  {
+    "hostname": "PC-DEV-004",
+    "ip": "192.168.25.43",
+    "status": "online",
+    "cpu_usage": "61%",
+    "ram_usage": "75%",
+    "disk_usage": "79%",
+    "last_seen": "2026-07-05T20:30:00Z"
+  },
+  {
+    "hostname": "PC-IMP-001",
+    "ip": "192.168.25.50",
+    "status": "online",
+    "cpu_usage": "5%",
+    "ram_usage": "12%",
+    "disk_usage": "0%",
+    "last_seen": "2026-07-05T20:30:00Z"
+  },
+  {
+    "hostname": "PC-IMP-002",
+    "ip": "192.168.25.51",
+    "status": "online",
+    "cpu_usage": "3%",
+    "ram_usage": "10%",
+    "disk_usage": "0%",
+    "last_seen": "2026-07-05T20:30:00Z"
+  },
+  {
+    "hostname": "PC-IMP-003",
+    "ip": "192.168.25.52",
+    "status": "offline",
+    "cpu_usage": "0%",
+    "ram_usage": "0%",
+    "disk_usage": "0%",
+    "last_seen": "2026-07-05T16:45:00Z"
+  },
+  {
+    "hostname": "PC-IMP-004",
+    "ip": "192.168.25.53",
+    "status": "online",
+    "cpu_usage": "4%",
+    "ram_usage": "11%",
+    "disk_usage": "0%",
+    "last_seen": "2026-07-05T20:30:00Z"
+  },
+  {
+    "hostname": "PC-IMP-005",
+    "ip": "192.168.25.54",
+    "status": "online",
+    "cpu_usage": "6%",
+    "ram_usage": "15%",
+    "disk_usage": "0%",
+    "last_seen": "2026-07-05T20:30:00Z"
+  }
+]

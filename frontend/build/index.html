@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<!--
+* ITSM Platform - Smart IT Service Management System
+* Powered by React + CoreUI + React Router
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="Smart IT Service Management Platform with AI-powered support">
+    <meta name="author" content="Your Organization">
+    <meta name="keyword" content="ITSM, IT Service Management, Ticketing, Asset Management, Helpdesk">
+    <meta name="theme-color" content="#321fdb">
+    <title>ITSM Platform</title>
+    <link rel="manifest" href="./manifest.json">
+    <link rel="shortcut icon" href="./favicon.ico">
+    <script type="module" crossorigin src="./assets/index-mHOeP5Ec.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/initReactI18next-CunpV_Wf.js">
+    <link rel="modulepreload" crossorigin href="./assets/jsx-runtime-v183glR-.js">
+    <link rel="modulepreload" crossorigin href="./assets/_virtual-FkhCM0ez.js">
+    <link rel="modulepreload" crossorigin href="./assets/i18n-E1UBFxAR.js">
+    <link rel="modulepreload" crossorigin href="./assets/api-BxCAWlVe.js">
+    <link rel="stylesheet" crossorigin href="./assets/index-UsQOoDUN.css">
+  </head>
+  <body>
+    <noscript>
+      You need to enable JavaScript to run this app
+    </noscript>
+    <div id="root"></div>
+    <script>
+      // Charger la config runtime en priorité depuis /config.json (utile pour CDN/static),
+      // puis fallback vers l'API backend `/api/settings/public`.
+      (function(){
+        const urls = ['/config.json', '/api/settings/public'];
+        const timeout = 1500;
+        let done = false;
+        const timer = setTimeout(() => { if (!done) { done = true; window.__ITSM_API_URL = undefined; } }, timeout);
+        (async function(){
+          for (const u of urls) {
+            try {
+              const r = await fetch(u, { cache: 'no-store' });
+              if (!r.ok) continue;
+              const j = await r.json();
+              const cfg = j && j.success && j.config ? j.config : j;
+              if (cfg && (cfg.apiUrl || cfg.frontendUrl)) {
+                window.__ITSM_API_URL = cfg.apiUrl;
+                window.__ITSM_FRONTEND_URL = cfg.frontendUrl;
+                break;
+              }
+            } catch (e) { /* ignore and try next */ }
+          }
+        })().finally(() => { clearTimeout(timer); done = true; });
+      })();
+    </script>
+    <!-- built files will be auto injected -->
+  </body>
+</html>

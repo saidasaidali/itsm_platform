@@ -1,0 +1,35 @@
+{
+  "name": "itsm-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node src/app.js",
+    "dev": "node --watch src/app.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "canvas": "^3.2.3",
+    "chart.js": "^4.5.1",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-validator": "^7.3.2",
+    "helmet": "^8.2.0",
+    "jsonwebtoken": "^9.0.3",
+    "mammoth": "^1.8.0",
+    "net-snmp": "^3.26.3",
+    "nodemailer": "^9.0.0",
+    "ollama": "^0.5.12",
+    "pdf-parse": "^1.1.1",
+    "pdfkit": "^0.19.1",
+    "pg": "^8.21.0",
+    "tesseract.js": "^7.0.0",
+    "xlsx": "^0.18.5"
+  },
+  "type": "module"
+}

@@ -1,0 +1,38 @@
+[settingsService] Paramètres non encore chargés, repli sur .env
+[settingsService] Paramètres non encore chargés, repli sur .env
+[settingsService] Paramètres non encore chargés, repli sur .env
+[settingsService] Paramètres non encore chargés, repli sur .env
+[settingsService] Paramètres non encore chargés, repli sur .env
+[documentController] Erreur indexation auto document #4: types incohérents déduit pour le paramètre $1
+[documentController] Erreur indexation auto document #5: types incohérents déduit pour le paramètre $1
+[documentController] Erreur indexation auto document #6: types incohérents déduit pour le paramètre $1
+[documentController] Erreur indexation auto document #7: types incohérents déduit pour le paramètre $1
+[KnowledgeBaseSearch] Error: error: la colonne « tags » n'existe pas
+    at C:\Users\HP\Downloads\itsm-platform\backend\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async searchKnowledgeBase (file:///C:/Users/HP/Downloads/itsm-platform/backend/src/services/knowledgeBaseSearch.js:53:22)
+    at async searchKBEnhanced (file:///C:/Users/HP/Downloads/itsm-platform/backend/src/services/smartAssistantService.js:736:10)
+    at async Object.processSmartMessage (file:///C:/Users/HP/Downloads/itsm-platform/backend/src/services/smartAssistantService.js:510:22)
+    at async file:///C:/Users/HP/Downloads/itsm-platform/backend/src/controllers/smartAssistantController.js:25:20 {
+  length: 111,
+  severity: 'ERREUR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '52',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3675',
+  routine: 'errorMissingColumn'
+}
+[pdfIndexer] Erreur processPendingDocuments: types incohérents déduit pour le paramètre $1
+[pdfIndexer] Erreur processPendingDocuments: types incohérents déduit pour le paramètre $1
+[pdfIndexer] Erreur processPendingDocuments: types incohérents déduit pour le paramètre $1
+[pdfIndexer] Erreur processPendingDocuments: types incohérents déduit pour le paramètre $1

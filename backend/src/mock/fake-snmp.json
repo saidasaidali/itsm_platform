@@ -1,0 +1,142 @@
+[
+  {
+    "hostname": "HP-LaserJet-M404-01",
+    "ip_address": "192.168.25.60",
+    "mac_address": "00:50:8B:AA:10:01",
+    "vendor": "HP",
+    "model": "LaserJet Pro M404dn",
+    "serial": "VNC3J12345",
+    "device_type": "Imprimante",
+    "status": "online"
+  },
+  {
+    "hostname": "HP-LaserJet-MFP-M428-02",
+    "ip_address": "192.168.25.61",
+    "mac_address": "00:50:8B:BB:20:02",
+    "vendor": "HP",
+    "model": "LaserJet MFP M428fdw",
+    "serial": "VNC3J67890",
+    "device_type": "Imprimante",
+    "status": "online"
+  },
+  {
+    "hostname": "HP-Color-LaserJet-M553-03",
+    "ip_address": "192.168.25.62",
+    "mac_address": "00:50:8B:CC:30:03",
+    "vendor": "HP",
+    "model": "Color LaserJet M553dn",
+    "serial": "VNC3J11223",
+    "device_type": "Imprimante",
+    "status": "online"
+  },
+  {
+    "hostname": "HP-OfficeJet-Pro-9015-04",
+    "ip_address": "192.168.25.63",
+    "mac_address": "00:50:8B:DD:40:04",
+    "vendor": "HP",
+    "model": "OfficeJet Pro 9015e",
+    "serial": "VNC3J44556",
+    "device_type": "Imprimante",
+    "status": "offline"
+  },
+  {
+    "hostname": "HP-LaserJet-Enterprise-M507-05",
+    "ip_address": "192.168.25.64",
+    "mac_address": "00:50:8B:EE:50:05",
+    "vendor": "HP",
+    "model": "LaserJet Enterprise M507dn",
+    "serial": "VNC3J77889",
+    "device_type": "Imprimante",
+    "status": "online"
+  },
+  {
+    "hostname": "Cisco-Catalyst-9300-SW01",
+    "ip_address": "192.168.25.2",
+    "mac_address": "70:72:3C:AA:10:01",
+    "vendor": "Cisco",
+    "model": "Catalyst 9300-48T",
+    "serial": "FCW2345A001",
+    "device_type": "Switch",
+    "status": "online"
+  },
+  {
+    "hostname": "Cisco-Catalyst-9200-SW02",
+    "ip_address": "192.168.25.3",
+    "mac_address": "70:72:3C:BB:20:02",
+    "vendor": "Cisco",
+    "model": "Catalyst 9200-24P",
+    "serial": "FCW2345A002",
+    "device_type": "Switch",
+    "status": "online"
+  },
+  {
+    "hostname": "Cisco-Catalyst-1000-SW03",
+    "ip_address": "192.168.25.4",
+    "mac_address": "70:72:3C:CC:30:03",
+    "vendor": "Cisco",
+    "model": "Catalyst 1000-48T",
+    "serial": "FCW2345A003",
+    "device_type": "Switch",
+    "status": "online"
+  },
+  {
+    "hostname": "Cisco-ISR-4321-RT01",
+    "ip_address": "192.168.25.1",
+    "mac_address": "70:72:3C:DD:40:01",
+    "vendor": "Cisco",
+    "model": "ISR 4321",
+    "serial": "FCW2345R001",
+    "device_type": "Routeur",
+    "status": "online"
+  },
+  {
+    "hostname": "Cisco-ISR-4331-RT02",
+    "ip_address": "192.168.25.5",
+    "mac_address": "70:72:3C:EE:50:02",
+    "vendor": "Cisco",
+    "model": "ISR 4331",
+    "serial": "FCW2345R002",
+    "device_type": "Routeur",
+    "status": "online"
+  },
+  {
+    "hostname": "Cisco-Aironet-2802-AP01",
+    "ip_address": "192.168.25.70",
+    "mac_address": "70:72:3C:FF:10:01",
+    "vendor": "Cisco",
+    "model": "Aironet 2802i",
+    "serial": "FCW2345W001",
+    "device_type": "Point d'accès Wi-Fi",
+    "status": "online"
+  },
+  {
+    "hostname": "Cisco-Aironet-2802-AP02",
+    "ip_address": "192.168.25.71",
+    "mac_address": "70:72:3C:FF:20:02",
+    "vendor": "Cisco",
+    "model": "Aironet 2802i",
+    "serial": "FCW2345W002",
+    "device_type": "Point d'accès Wi-Fi",
+    "status": "online"
+  },
+  {
+    "hostname": "Cisco-Aironet-3802-AP03",
+    "ip_address": "192.168.25.72",
+    "mac_address": "70:72:3C:FF:30:03",
+    "vendor": "Cisco",
+    "model": "Aironet 3802i",
+    "serial": "FCW2345W003",
+    "device_type": "Point d'accès Wi-Fi",
+    "status": "offline"
+  },
+  {
+    "hostname": "Cisco-Aironet-3802-AP04",
+    "ip_address": "192.168.25.73",
+    "mac_address": "70:72:3C:FF:40:04",
+    "vendor": "Cisco",
+    "model": "Aironet 3802i",
+    "serial": "FCW2345W004",
+    "device_type": "Point d'accès Wi-Fi",
+    "status": "online"
+  }
+]

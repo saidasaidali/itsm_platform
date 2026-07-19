@@ -1,0 +1,17 @@
+{
+  "short_name": "ITSM",
+  "name": "ITSM Platform",
+  "description": "Smart IT Service Management Platform with AI-powered support",
+  "icons": [
+    {
+      "src": "./favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#321fdb",
+  "background_color": "#ffffff",
+  "categories": ["productivity", "business"]
+}
