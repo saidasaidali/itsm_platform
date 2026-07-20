@@ -76,7 +76,7 @@ const allowed = (getSettings().cors_origin || 'http://localhost:3001')
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept-Language'],
 }));
 
-app.use(express.json({ limit: '10kb' }));
+app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: false }));
 app.use(languageMiddleware);
 // Routes

@@ -224,6 +224,17 @@
         "Switch": "محول",
         "Serveur": "خادم"
       }
+    },
+    "ml": {
+      "title": "درجات خطر التعلم الآلي — ذكاء تنبؤي",
+      "avg_score": "المتوسط",
+      "per_assets": "/100 (على {{count}} أجهزة)",
+      "risk_critical": "خطر حرج",
+      "risk_high": "خطر مرتفع",
+      "risk_low_moderate": "منخفض / متوسط",
+      "assets_label": "أجهزة",
+      "top_risky_title": "أعلى 5 أجهزة خطورة (التعلم الآلي)",
+      "failure_predictions_title": "تنبؤات الأعطال — يوصى بالتدخل الوقائي"
     }
   },
   "lang": {
@@ -247,7 +258,14 @@
     "or": "أو",
     "all": "الكل",
     "saving": "جاري الحفظ...",
-    "locale": "ar-SA"
+    "locale": "ar-SA",
+    "risk_ml": "خطر التعلم الآلي",
+    "ml_score_unavailable": "درجة التعلم الآلي غير متوفرة (الخدمة في انتظار التدريب).",
+    "ml_score": "درجة التعلم الآلي: {{score}}/100",
+    "failure_probable": "عطل محتمل خلال 30 يوم",
+    "failure_probability": "الاحتمالية: {{probability}}%",
+    "anomalous_behavior": "تم اكتشاف سلوك شاذ",
+    "anomaly_score": "درجة الشذوذ: {{score}}/100"
   },
   "reset_password": {
     "title": "كلمة مرور جديدة",

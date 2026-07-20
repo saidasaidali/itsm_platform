@@ -232,6 +232,17 @@
         "Switch": "Switch",
         "Serveur": "Server"
       }
+    },
+    "ml": {
+      "title": "ML Risk Scores — Predictive Intelligence",
+      "avg_score": "Average Score",
+      "per_assets": "/100 (on {{count}} assets)",
+      "risk_critical": "Critical Risk",
+      "risk_high": "High Risk",
+      "risk_low_moderate": "Low / Moderate",
+      "assets_label": "assets",
+      "top_risky_title": "Top 5 Riskiest Assets (ML)",
+      "failure_predictions_title": "Failure Predictions — Preventive Intervention Recommended"
     }
   },
   "lang": {
@@ -255,7 +266,14 @@
     "or": "or",
     "all": "All",
     "saving": "Saving...",
-    "locale": "en-US"
+    "locale": "en-US",
+    "risk_ml": "ML Risk",
+    "ml_score_unavailable": "ML score unavailable (service awaiting training).",
+    "ml_score": "ML Score: {{score}}/100",
+    "failure_probable": "Failure likely within 30 days",
+    "failure_probability": "Probability: {{probability}}%",
+    "anomalous_behavior": "Anomalous behavior detected",
+    "anomaly_score": "Anomaly score: {{score}}/100"
   },
   "reset_password": {
     "title": "New Password",
@@ -813,7 +831,8 @@
     "modal_office_label": "Office",
     "modal_office_placeholder": "Office 203...",
     "modal_confirm": "Confirm assignment",
-    "modal_cancel": "Cancel"
+    "modal_cancel": "Cancel",
+    "risk_score_title": "ML Risk Score"
   },
   "settings": {
     "title": "Settings",
