@@ -3,7 +3,6 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import multer from 'multer';
 
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
@@ -24,7 +23,6 @@ import settingsRoutes from './routes/settingsRoutes.js';
 import { getPublicConfig } from './controllers/settingsController.js';
 import { loadSettings, getSettings } from './services/settingsService.js';
 import chatbotRoutes from './routes/chatbotRoutes.js';
-import { voiceMessage } from './controllers/chatbotController.js';
 import suggestionRoutes from './routes/suggestionRoutes.js';
 import recommendationRoutes from './routes/recommendationRoutes.js';
 import sentimentRoutes from './routes/sentimentRoutes.js';
@@ -52,26 +50,6 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// Configuration multer pour l'upload de fichiers audio
-const storage = multer.memoryStorage();
-const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB max
-  },
-  fileFilter: (req, file, cb) => {
-    // Accepter tous les fichiers audio (mimetype commence par 'audio/')
-    // ou les types courants même sans codec spécifié
-    const isAudio = file.mimetype.startsWith('audio/') || 
-                    ['application/octet-stream'].includes(file.mimetype);
-    if (isAudio) {
-      cb(null, true);
-    } else {
-      cb(new Error('Type de fichier non autorisé. Seuls les fichiers audio sont acceptés.'));
-    }
-  }
-});
 
 // Configuration manuelle du CSP pour éviter les conflits avec Helmet
 app.use((req, res, next) => {
@@ -119,8 +97,6 @@ app.use('/api/settings', settingsRoutes);
 
 // Expose a root-level config.json for static frontends/CDNs to consume at deploy time
 app.get('/config.json', getPublicConfig);
-// Route pour upload audio avec multer
-app.post('/api/chatbot/voice', upload.single('audio'), voiceMessage);
 
 app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/recommendations', recommendationRoutes);

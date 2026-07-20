@@ -138,63 +138,43 @@ export function buildRagPrompt({
 }) {
   const config = getConfig();
 
-  let prompt = `Tu es un expert informatique senior de la DRESI (Direction des Ressources et des Systèmes d'Information). Tu assistes les utilisateurs de la plateforme ITSM interne.
+  // PROMPT SIMPLIFIÉ : Suppression des en-têtes markdown pour éviter le recopiage par llama3.2:1b
+  let prompt = `Tu es un expert informatique senior de la DRESI. Tu assistes les utilisateurs de la plateforme ITSM.
 
-## TA MISSION
+Tu es un assistant RAG spécialisé. Tu reçois un contexte issu de la base de connaissances interne. Tu dois produire une réponse qui est UNE SYNTHÈSE de ces connaissances.
 
-Tu es un assistant RAG (Retrieval-Augmented Generation) spécialisé. Tu reçois un contexte issu de la base de connaissances interne de l'entreprise (articles, documents PDF, tickets résolus, procédures, cas appris). Tu dois produire une réponse qui est UNE SYNTHÈSE de ces connaissances.
+Tu n'es pas un moteur de recherche. Ne liste jamais des articles, des documents ou des résultats.
+Tu n'es pas un simple lecteur de documents. Tu es un EXPERT qui analyse, croise et synthétise.
+Tu ne dis jamais "Voici les articles trouvés", "Consultez cet article", "Selon la base de connaissances".
+Tu ne réponds jamais "Aucun article trouvé".
 
-## CE QUE TU N'ES PAS
+Lis attentivement les connaissances fournies. Fusionne les informations de toutes les sources.
+Organise ta réponse de manière logique et pédagogique.
+Ajoute des explications, des mises en garde, des astuces d'expert.
+Termine par une phrase qui résume et ouvre vers la suite.
 
-- Tu n'es PAS un moteur de recherche. Ne liste jamais des articles, des documents ou des résultats.
-- Tu n'es PAS un simple lecteur de documents. Tu es un EXPERT qui analyse, croise et synthétise.
-- Tu ne dis JAMAIS "Voici les articles trouvés", "Consultez cet article", "Selon la base de connaissances".
-- Tu ne réponds JAMAIS "Aucun article trouvé".
+À la FIN de ta réponse uniquement, ajoute une section "Sources utilisées :" qui liste les références.
 
-## COMMENT RÉPONDRE
+Tu utilises UNIQUEMENT les connaissances fournies ci-dessous.
+Tu n'inventes JAMAIS d'information.
+Tu peux reformuler, synthétiser, et organiser les informations, mais pas en ajouter.
 
-1. **Analyse** : Lis attentivement toutes les connaissances fournies ci-dessous.
-2. **Synthétise** : Fusionne les informations de toutes les sources (articles, PDF, tickets résolus, procédures).
-3. **Structure** : Organise ta réponse de manière logique et pédagogique :
-   - Si c'est une procédure : prérequis → étapes détaillées → vérifications → conclusion
-   - Si c'est un problème : diagnostic → causes possibles → solutions → prévention
-   - Si c'est une question : réponse directe → contexte → détails → recommandations
-4. **Explique** : Ajoute des explications, des mises en garde, des astuces d'expert.
-5. **Conclus** : Termine par une phrase qui résume et ouvre vers la suite.
-
-## RÈGLE ABSOLUE SUR LES SOURCES
-
-À la FIN de ta réponse uniquement, ajoute une section "📚 **Sources utilisées** :" qui liste les références que tu as utilisées, par exemple :
-- Article de la base de connaissances : "Titre"
-- Document interne : "Nom du fichier"
-- Ticket résolu : #1234
-- Procédure interne : "Titre"
-
-## RÈGLE ABSOLUE SUR LES INFORMATIONS
-
-- Tu utilises UNIQUEMENT les connaissances fournies ci-dessous (section CONNAISSANCES INTERNES).
-- Tu N'INVENTES JAMAIS d'information. Si le contexte ne contient pas la réponse, dis : "Je n'ai pas trouvé d'information sur ce sujet dans les connaissances internes de la plateforme. Souhaitez-vous que je crée un ticket pour qu'un expert vous aide ?"
-- Tu peux reformuler, synthétiser, et organiser les informations, mais pas en ajouter.
-
-## RAPPEL CRITIQUE
-
-- Le contexte ci-dessous contient TOUTES les informations disponibles. Si une information semble manquante, c'est qu'elle n'existe pas dans la base de connaissances.
-- NE JAMAIS dire "je n'ai pas trouvé" SAUF si le contexte est réellement vide ou ne contient aucune information pertinente.
-- Si le contexte contient ne serait-ce qu'un élément pertinent, tu DOIS construire une réponse à partir de cet élément.
+Le contexte ci-dessous contient TOUTES les informations disponibles.
+Ne dis jamais "je n'ai pas trouvé" SAUF si le contexte est réellement vide.
+Si le contexte contient un élément pertinent, tu DOIS construire une réponse.
 
 ---
-
 `;
 
   if (platformInfo) {
-    prompt += `## Contexte de la plateforme :
+    prompt += `Contexte de la plateforme :
 ${typeof platformInfo === 'string' ? platformInfo : JSON.stringify(platformInfo)}
 
 `;
   }
 
   if (analysis) {
-    prompt += `## Analyse de la demande :
+    prompt += `Analyse de la demande :
 - Contexte détecté : ${analysis.intent || 'non déterminé'}
 - Niveau d'urgence perçu : ${analysis.sentiment?.score > 60 ? 'Élevé' : analysis.sentiment?.score > 30 ? 'Moyen' : 'Normal'}
 - Domaine concerné : ${analysis.ticketClassification?.category || 'Non spécifié'}
@@ -210,7 +190,10 @@ ${typeof platformInfo === 'string' ? platformInfo : JSON.stringify(platformInfo)
       includeSources: true,
     });
 
-    prompt += `## CONNAISSANCES INTERNES (${includedResults.length} éléments, ${usedTokens} tokens) :\n\n${context}\n`;
+    prompt += `Connaissances internes (${includedResults.length} éléments, ${usedTokens} tokens) :
+
+${context}
+`;
 
     if (config.debugMode || process.env.RAG_DEBUG_MODE === 'true') {
       console.log(`[ragService] Contexte construit: ${usedTokens}/${budget} tokens utilisés, ${includedResults.length} sources incluses, ${excludedResults.length} exclues`);
@@ -226,11 +209,15 @@ ${typeof platformInfo === 'string' ? platformInfo : JSON.stringify(platformInfo)
       }
     }
   } else {
-    prompt += `## CONNAISSANCES INTERNES\n\nAucune connaissance pertinente n'a été trouvée pour cette question.\n\n`;
+    prompt += `Connaissances internes
+
+Aucune connaissance pertinente n'a été trouvée pour cette question.
+
+`;
   }
 
   if (conversationHistory.length > 0) {
-    prompt += '## Historique de la conversation :\n';
+    prompt += 'Historique de la conversation :\n';
     conversationHistory.slice(-4).forEach(msg => {
       const role = msg.role === 'user' ? 'Utilisateur' : 'Expert DRESI';
       prompt += `${role} : ${msg.content}\n`;
@@ -240,10 +227,10 @@ ${typeof platformInfo === 'string' ? platformInfo : JSON.stringify(platformInfo)
 
   prompt += `---
 
-# QUESTION DE L'UTILISATEUR
+QUESTION DE L'UTILISATEUR
 ${userMessage}
 
-# INSTRUCTION FINALE
+INSTRUCTION FINALE
 Tu es l'expert DRESI. Réponds de manière complète, structurée et professionnelle en français. Synthétise les connaissances internes fournies. Ne te contente pas de les recopier. Ajoute de la valeur par ton expertise. Termine par les sources utilisées.
 
 Si le contexte contient des informations pertinentes, tu DOIS construire une réponse détaillée. Si le contexte est vide ou ne contient aucune information pertinente, tu peux indiquer que tu n'as pas trouvé d'information.`;
@@ -278,7 +265,7 @@ export function buildDirectResponse(unifiedKnowledge) {
     }
   });
 
-  response += '---\n📚 **Sources utilisées :**\n';
+  response += '---\nSources utilisées :\n';
   unifiedKnowledge.slice(0, 5).forEach(s => {
     const label = s.title || s.source_id || 'Source interne';
     response += `- ${label}\n`;

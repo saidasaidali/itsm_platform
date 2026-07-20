@@ -79,7 +79,6 @@
 | `backend/src/services/chatbot/chatbotBrain.js` | Cœur du chatbot : session, message, recherche mémoire/KB, RAG, réponse | 237 |
 | `backend/src/controllers/chatbotController.js` | Contrôleur Express : `askChatbot`, `sendMessage`, `voiceMessage`, `syncAll`, `getTopCases`, `getSessionHistory` | 97 |
 | `backend/src/routes/chatbotRoutes.js` | Définition des routes API | 12 |
-| `backend/src/services/whisperService.js` | Transcription vocale Whisper (importé) | — |
 | `backend/src/services/ragService.js` | Service RAG partagé (recherche unifiée, buildRagPrompt, callOllama, routeIntent) | 550 |
 | `backend/src/services/knowledgeBaseSearch.js` | Recherche KB (importé) | — |
 | `backend/src/utils/nlpUtils.js` | Détection intention, extraction mots-clés | 276 |

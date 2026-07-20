@@ -55,12 +55,6 @@ export async function loadSettings() {
       ollama_url: fromDb.ollama_url || process.env.OLLAMA_URL || 'http://localhost:11434',
       ollama_model: fromDb.ollama_model || process.env.OLLAMA_MODEL || 'llama3.2',
 
-      // Native binaries / paths
-      piper_tts_path: fromDb.piper_tts_path || process.env.PIPER_TTS_PATH || 'piper',
-      piper_model_path: fromDb.piper_model_path || process.env.PIPER_MODEL_PATH || './models/fr_FR-upmc-medium.onnx',
-      whisper_cpp_path: fromDb.whisper_cpp_path || process.env.WHISPER_CPP_PATH || 'whisper-cli',
-      whisper_model_path: fromDb.whisper_model_path || process.env.WHISPER_MODEL_PATH || './models/ggml-base.bin',
-
       // WMI / Network Discovery settings
       wmi_timeout_sec:        Number(fromDb.wmi_timeout_sec        || process.env.WMI_TIMEOUT_SEC        || 10),
       wmi_max_parallel:       Number(fromDb.wmi_max_parallel       || process.env.WMI_MAX_PARALLEL       || 32),

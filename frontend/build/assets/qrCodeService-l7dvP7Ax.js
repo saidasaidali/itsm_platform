@@ -1,1 +1,0 @@
-import{t as e}from"./api-BxCAWlVe.js";var t=async t=>{let n=await e.post(`/api/qr/assets/${t}/generate`);if(!n.success)throw Error(n.message||`Erreur génération QR`);return n.data},n=async t=>{let n=await e.get(`/api/qr/assets/scan/${t}`);if(!n.success)throw Error(n.message||`QR Code invalide`);return n};export{n,t};
