@@ -72,7 +72,6 @@ ITSM Platform est une plateforme complète de gestion des services informatiques
 - **ML** : Prédiction de risque de panne (risk scoring)
 - **Recommandations** : Recommandation de techniciens basée sur la charge et les compétences
 - **Actions** : Création automatique de tickets
-- **Voix** : Support vocal (Whisper + Piper TTS)
 - **Apprentissage** : Le système apprend des tickets résolus
 
 ### 💬 Chatbot & Base de Connaissances
@@ -216,7 +215,6 @@ Services (Couche API)
 - **IA/ML** : Ollama (LLM local), scikit-learn, pandas
 - **Fichiers** : Multer, PDFKit, pdf-parse, XLSX, Mammoth, Canvas
 - **Communication** : Nodemailer (email), net-snmp (SNMP)
-- **Voix** : Whisper (reconnaissance), Piper TTS (synthèse)
 - **Utilitaires** : dotenv, chart.js
 
 ### Frontend
@@ -240,7 +238,6 @@ Services (Couche API)
 - **ML** : scikit-learn 1.4.2, pandas 2.2.2, joblib 1.4.2
 - **NLP** : Traitement naturel custom (tokenization, stemming, intentions)
 - **Sentiment** : Analyse de sentiment avec émotions
-- **Voix** : Whisper (reconnaissance vocale), Piper TTS (synthèse vocale)
 
 ---
 
@@ -925,7 +922,6 @@ Les migrations sont automatiques au démarrage du backend. Pour ajouter de nouve
 
 ### Version 2.0.0 (Q4 2025)
 - [ ] Intégration Slack/Teams
-- [ ] Chatbot vocal complet
 - [ ] Prédictions ML avancées (LSTM, Transformers)
 - [ ] Géolocalisation des équipements
 - [ ] Gestion de parc cloud (AWS, Azure, GCP)
