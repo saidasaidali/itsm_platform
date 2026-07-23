@@ -985,5 +985,5 @@ Pour toute question ou problème :
 
 ---
 
-**Dernière mise à jour** : Janvier 2025  
+**Dernière mise à jour** : Juillet 2026  
 **Version** : 1.0.0
